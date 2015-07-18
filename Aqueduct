@@ -1,0 +1,3 @@
+[ubuntu]
+{CURRENT} = {RELEASE}-updates, main
+{OLD_SUPPORTED} = {RELEASE}-backports, main

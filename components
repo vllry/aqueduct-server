@@ -1,0 +1,9 @@
+Main - Software supported by the repository owner
+Restricted - Supported software that is not available under a completely free license.
+Universe - Community maintained software, i.e. not officially supported software.
+Multiverse - Software that is not free. 
+
+When a package is uploaded, the following must be specified:
+Operating systems
+	-Releases
+	-Component

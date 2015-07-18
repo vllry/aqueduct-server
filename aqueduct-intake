@@ -1,0 +1,62 @@
+#!/usr/bin/python3
+
+from os import path
+from sys import argv, exit
+from shutil import copytree
+from configparser import ConfigParser
+from aqueduct import str_replace
+
+
+
+directory = "aqueduct-intake"
+package_dir = argv[1]
+
+
+
+def read_package_config():
+	results = {}
+
+	aliases = {}
+	aliases_raw = ConfigParser()
+	aliases_raw.read('/home/vallery/Desktop/conduit/aqueduct/etc/aqueduct/repositories-aliases.conf')
+	for repo in aliases_raw.sections():
+		aliases[repo] = {}
+		for alias in aliases_raw[repo]:
+			aliases[repo][alias] = aliases_raw[repo][alias]
+			for var in aliases_raw[repo]:
+				aliases[repo][alias] = str_replace(aliases[repo][alias], {var:aliases_raw[repo][var]}) #Go through all the aliases in aliases_raw and make replacements
+
+	aqueduct_file = path.join(argv[1], 'Aqueduct')
+	if not path.exists(aqueduct_file):
+		exit(1)
+
+	conf = ConfigParser()
+	conf.read(aqueduct_file)
+	for repo in conf.sections():
+		results[repo] = {}
+		for line in conf[repo]:
+			release_list = str_replace(line, aliases[repo]).replace(' ','').split(',')
+			for release in release_list:
+				line_settings = conf[repo][line].split(',')
+				results[repo][release] = (str_replace(line_settings[0],{'release':release}), line_settings[1])
+			
+	return results
+
+
+
+def edit_control_files(package_dir, release, dist):
+	deb_dir = path.join(package_dir, 'debian')
+	popen("cd " + deb_dir + " && grep -lr {RELEASE} . |xargs sed -e 's/{RELEASE}/"+release+"/' -i")
+	popen("cd " + deb_dir + " && grep -lr {DIST} . |xargs sed -e 's/{DIST}/"+dist+"/' -i")
+
+
+
+def send_to_build_server(package_dir, os, release, dist):
+	
+
+
+
+package_config = read_package_config()
+for repo in package_config:
+	for release in package_config[repo]:
+		print(release)
