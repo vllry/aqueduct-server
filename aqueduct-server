@@ -1,0 +1,48 @@
+#!/usr/bin/python3
+
+from threading import Thread
+import json
+from os import getuid
+from bottle import route, run, request#, static_file, abort
+import libaqueduct as aqueduct
+
+
+
+@route('/', method='GET')
+def get_info():
+	info = {
+		'service': 'aqueduct-server',
+		'name': conf['name'],
+		'version': conf['version'],
+		}
+	return json.dumps(info)
+
+
+
+@route('/submit', method='POST')
+def build_submit():
+	upload = request.files.data
+
+	if not upload or not upload.file:
+		return {'success': False, 'message': 'No file supplied'}
+
+	upload.save(conf['dir']['intake'])
+	buildid = builder.db_build_new(os, release, upload.filename, callbackurl)
+	builder.db_progress_tarfile(buildid, upload.filename)
+	path_to_source = conf['dir']['intake'] + upload.filename
+
+	t = Thread(target=builder.pkg_build, args=(buildid,os,release,path_to_source,))
+	t.start()
+
+	return {
+			'success': True,
+			'message': 'Job successfully submitted',
+			'id': buildid
+			}
+
+
+
+if getuid() == 0:
+	run(host='', port=conf['port'], debug=True)
+else:
+	print('Please run aqueduct-builder as root')

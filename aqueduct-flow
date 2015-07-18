@@ -7,7 +7,7 @@ import aqueduct
 
 def deb_exists(directory, name, version, arch):
 	return path.exists(directory + '/' + name + '_' + version + '_' + arch + '.deb')
-	
+
 
 
 directory = "/home/vallery/Desktop/conduit/aqueduct/aqueduct-queue"
