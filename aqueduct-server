@@ -17,8 +17,7 @@ conf = aqueduct.config()
 def get_info():
 	info = {
 		'service': 'aqueduct-server',
-		'name': conf['name'],
-		'version': conf['version']
+		'version': conf.general['version']
 		}
 	return json.dumps(info)
 
@@ -44,6 +43,6 @@ def build_submit():
 
 
 if getuid() == 0:
-	run(host='', port=conf['port'], debug=True)
+	run(host='', port=conf.general['port'], debug=True)
 else:
 	print('Please run aqueduct-server as root')

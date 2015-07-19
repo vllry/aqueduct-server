@@ -17,10 +17,10 @@ class config:
 						'components',
 						'distributions'
 					]
-		self.repos = {}
 
-		conf = json.load(open(config_file_path, 'r'))
-		repo_conf = json.load(open(conf['repositories'], 'r'))
+		self.repos = {}
+		self.general = json.load(open(config_file_path, 'r'))
+		repo_conf = json.load(open(self.general['repositories'], 'r'))
 
 		for repo in repo_conf:
 			self.repos[repo] = {}
