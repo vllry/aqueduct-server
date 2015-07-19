@@ -1,10 +1,15 @@
 #!/usr/bin/python3
 
-from threading import Thread
+from bottle import route, run, request#, static_file, abort
 import json
 from os import getuid
-from bottle import route, run, request#, static_file, abort
+from threading import Thread
+
 import libaqueduct as aqueduct
+
+
+
+conf = aqueduct.config()
 
 
 
@@ -13,7 +18,7 @@ def get_info():
 	info = {
 		'service': 'aqueduct-server',
 		'name': conf['name'],
-		'version': conf['version'],
+		'version': conf['version']
 		}
 	return json.dumps(info)
 
@@ -27,17 +32,13 @@ def build_submit():
 		return {'success': False, 'message': 'No file supplied'}
 
 	upload.save(conf['dir']['intake'])
-	buildid = builder.db_build_new(os, release, upload.filename, callbackurl)
-	builder.db_progress_tarfile(buildid, upload.filename)
-	path_to_source = conf['dir']['intake'] + upload.filename
 
-	t = Thread(target=builder.pkg_build, args=(buildid,os,release,path_to_source,))
-	t.start()
+	#t = Thread(target=builder.pkg_build, args=(buildid,os,release,path_to_source,))
+	#t.start()
 
 	return {
 			'success': True,
-			'message': 'Job successfully submitted',
-			'id': buildid
+			'message': 'Source submitted',
 			}
 
 
@@ -45,4 +46,4 @@ def build_submit():
 if getuid() == 0:
 	run(host='', port=conf['port'], debug=True)
 else:
-	print('Please run aqueduct-builder as root')
+	print('Please run aqueduct-server as root')

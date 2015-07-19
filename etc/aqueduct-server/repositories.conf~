@@ -1,0 +1,26 @@
+{
+	"ubuntu" : {
+		"defaults" : {
+			"arch" : ["source", "i386", "amd64"],
+			"distributions" : ["{{RELEASE}}", "{{RELEASE}}-security", "{{RELEASE}}-updates", "{{RELEASE}}-backports", "{{RELEASE}}-proposed"]
+		},
+
+		"alliases" : {
+			"DEV" : "wily",
+			"CURRENT" : "vivid",
+			"OLD_SUPPORTED" : "utopic, trusty",
+			"SUPPORTED" : "{{DEV}}, {{CURRENT}}, {{OLD_SUPPORTED}}" 
+		},
+
+		"releases" : {
+			"wily" : {},
+			"vivid" : {},
+			"utopic" : {
+				"distributions" : ["{{RELEASE}}"]
+			},
+			"trusty" : {
+				"distributions" : ["{{RELEASE}}"]
+			}
+		}
+	}
+}
