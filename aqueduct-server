@@ -30,15 +30,15 @@ def build_submit():
 	if not upload or not upload.file:
 		return {'success': False, 'message': 'No file supplied'}
 
-	upload.save(conf['dir']['intake'])
+	upload.save(conf.general['dir']['intake'])
 
-	#t = Thread(target=builder.pkg_build, args=(buildid,os,release,path_to_source,))
-	#t.start()
+	t = Thread(target=aqueduct.intake, args=(path_to_source,))
+	t.start()
 
 	return {
-			'success': True,
-			'message': 'Source submitted',
-			}
+		'success': True,
+		'message': 'Source submitted'
+	}
 
 
 

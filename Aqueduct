@@ -1,3 +1,9 @@
-[ubuntu]
-{CURRENT} = {RELEASE}-updates, main
-{OLD_SUPPORTED} = {RELEASE}-backports, main
+{
+	"version" : 1,
+	"oses" : {
+		"ubuntu" : {
+			"releases" : "{{CURRENT}}",
+			"distribution" : "main"
+		}
+	}
+}

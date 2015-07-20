@@ -10,7 +10,6 @@ class config:
 	"""Load and process the config files"""
 
 
-
 	def __init__(self, config_file_path = "/home/vallery/Development/Aqueduct/aqueduct-server/etc/aqueduct-server/aqueduct-server.conf"):
 		attributes = [
 						'arch',
@@ -48,3 +47,28 @@ def var_replace(s, values_original):
 			s_lower = s.lower()
 			pos = s_lower.find(key)
 	return s
+
+
+
+def untar(filepath, dest):
+	tfile = tarfile.open(filepath, 'r:gz')
+	tfile.extractall(dest)
+	name = tfile.getnames()[0]
+	tfile.close() #?
+	remove(filepath)
+	return name
+
+
+
+def intake(filepath):
+	filepath = untar(filepath, conf.general['dir']['processing'])
+	if filepath.isfile():
+		print("Tarfile did not have valid contents")
+		return
+	if filepath[-1] != '/':
+		filepath = filepath + '/'
+	f = open(filepath+'debian/Aqueduct', 'r')
+	Aqueduct = f.read()
+	f.close()
+
+	
