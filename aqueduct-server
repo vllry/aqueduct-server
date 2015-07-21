@@ -30,9 +30,10 @@ def build_submit():
 	if not upload or not upload.file:
 		return {'success': False, 'message': 'No file supplied'}
 
+	path_to_source = conf.general['dir']['intake'] + upload.filename
 	upload.save(conf.general['dir']['intake'])
 
-	t = Thread(target=aqueduct.intake, args=(path_to_source,))
+	t = Thread(target=aqueduct.intake, args=(conf,path_to_source,))
 	t.start()
 
 	return {

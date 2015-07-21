@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-from os import listdir, path
+from os import listdir, path, remove
+import shutil
 import tarfile
 import json
 
@@ -19,6 +20,9 @@ class config:
 
 		self.repos = {}
 		self.general = json.load(open(config_file_path, 'r'))
+		for d in self.general['dir']: #Ensure all dirs have a trailing slash
+			if self.general['dir'][d][-1] != '/':
+				self.general['dir'][d] = self.general['dir'][d] + '/'
 		repo_conf = json.load(open(self.general['repositories'], 'r'))
 
 		for repo in repo_conf:
@@ -60,15 +64,15 @@ def untar(filepath, dest):
 
 
 
-def intake(filepath):
-	filepath = untar(filepath, conf.general['dir']['processing'])
-	if filepath.isfile():
+def intake(conf, filepath):
+	name = untar(filepath, conf.general['dir']['processing'])
+	filepath = conf.general['dir']['processing'] + name + '/'
+	if path.isfile(filepath):
 		print("Tarfile did not have valid contents")
 		return
-	if filepath[-1] != '/':
-		filepath = filepath + '/'
-	f = open(filepath+'debian/Aqueduct', 'r')
-	Aqueduct = f.read()
-	f.close()
+	Aqueduct = json.load(open(filepath+'debian/Aqueduct', 'r'))
 
-	
+	for operatingsystem in Aqueduct['oses']:
+		for release in Aqueduct['oses'][operatingsystem]['releases'].replace(' ','').split(','):
+			#shutil.copytree(filepath, '%s%s_%s_%s' % (conf.general['dir']['processing'], name, operatingsystem, release))
+			print(release)

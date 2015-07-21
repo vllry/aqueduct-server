@@ -1,9 +1,14 @@
 {
-	"version" : 1,
+	"version" : 0.1,
+
 	"oses" : {
 		"ubuntu" : {
 			"releases" : "{{CURRENT}}",
 			"distribution" : "main"
 		}
-	}
+	},
+
+	"modify" : [
+		"debian/changelog"
+	]
 }
