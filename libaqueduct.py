@@ -7,6 +7,14 @@ import json
 
 
 
+def json_file(filepath):
+	f = open(filepath, 'r')
+	data = json.load(f)
+	f.close()
+	return data
+
+
+
 class config:
 	"""Load and process the config files"""
 
@@ -19,11 +27,11 @@ class config:
 					]
 
 		self.repos = {}
-		self.general = json.load(open(config_file_path, 'r'))
+		self.general = json_file(config_file_path)
 		for d in self.general['dir']: #Ensure all dirs have a trailing slash
 			if self.general['dir'][d][-1] != '/':
 				self.general['dir'][d] = self.general['dir'][d] + '/'
-		repo_conf = json.load(open(self.general['repositories'], 'r'))
+		repo_conf = json_file(self.general['repositories'])
 
 		for repo in repo_conf:
 			self.repos[repo] = {}
@@ -70,7 +78,7 @@ def intake(conf, filepath):
 	if path.isfile(filepath):
 		print("Tarfile did not have valid contents")
 		return
-	Aqueduct = json.load(open(filepath+'debian/Aqueduct', 'r'))
+	Aqueduct = json_file(filepath+'debian/Aqueduct')
 
 	for operatingsystem in Aqueduct['oses']:
 		for release in Aqueduct['oses'][operatingsystem]['releases'].replace(' ','').split(','):
