@@ -5,7 +5,7 @@ import json
 from os import getuid
 from threading import Thread
 
-import libaqueduct as aqueduct
+import libaqueductserver as aqueduct
 
 
 
