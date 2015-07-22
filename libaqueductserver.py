@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
+import json
 from os import listdir, path, remove
+from random import randrange
 import shutil
 import tarfile
-import json
 
 
 
@@ -17,7 +18,6 @@ def json_file(filepath):
 
 class config:
 	"""Load and process the config files"""
-
 
 	def __init__(self, config_file_path = "/home/vallery/Development/Aqueduct/aqueduct-server/etc/aqueduct-server/aqueduct-server.conf"):
 		attributes = [
@@ -73,14 +73,16 @@ def untar(filepath, dest):
 
 
 def intake(conf, filepath):
-	name = untar(filepath, conf.general['dir']['processing'])
-	filepath = conf.general['dir']['processing'] + name + '/'
-	if path.isfile(filepath):
+	dir_processing = conf.general['dir']['processing'] + str(randrange(0,99999)) + '/'
+	dir_processing_orig = dir_processing + 'original/'
+
+	name = untar(filepath, dir_processing_orig)
+	dir_processing_orig += name + '/'
+	if path.isfile(dir_processing_orig):
 		print("Tarfile did not have valid contents")
 		return
-	Aqueduct = json_file(filepath+'debian/Aqueduct')
+	Aqueduct = json_file(dir_processing_orig+'debian/Aqueduct')
 
 	for operatingsystem in Aqueduct['oses']:
 		for release in Aqueduct['oses'][operatingsystem]['releases'].replace(' ','').split(','):
-			#shutil.copytree(filepath, '%s%s_%s_%s' % (conf.general['dir']['processing'], name, operatingsystem, release))
-			print(release)
+			shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
