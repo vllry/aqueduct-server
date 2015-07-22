@@ -73,6 +73,22 @@ def untar(filepath, dest):
 
 
 
+def package_modify(Aqueduct, dir_processing, var_dictionary):
+	for target in Aqueduct['modify']:
+		target_path = dir_processing + target
+		f = open(target_path, 'r')
+		data = f.read()
+		f.close()
+		f = open(target_path, 'w')
+		f.write(replace(data, var_dictionary))
+		f.close()
+
+
+
+#def buildserver_submit
+
+
+
 def intake(conf, filepath):
 	dir_processing = conf.general['dir']['processing'] + str(randrange(0,99999)) + '/'
 	print('Processing package in ' + dir_processing)
@@ -91,16 +107,12 @@ def intake(conf, filepath):
 			var_dictionary = {'os' : operatingsystem}
 			for release in Aqueduct['oses'][operatingsystem]['releases'].replace(' ','').split(','):
 				var_dictionary['release'] = release
-				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
 
-				for target in Aqueduct['modify']:
-					target_path = "%s%s_%s/%s" % (dir_processing, operatingsystem, release, target)
-					f = open(target_path, 'r')
-					data = f.read()
-					f.close()
-					f = open(target_path, 'w')
-					f.write(replace(data, var_dictionary))
-					f.close()
+				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
+				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
+				package_modify(Aqueduct, dir_processing, var_dictionary)
+				#buildserver_submit()
+				
 
 	else:
 		print("Unrecognized aqueduct version: " + Aqueduct['version'])
