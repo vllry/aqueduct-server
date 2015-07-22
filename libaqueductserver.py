@@ -43,7 +43,8 @@ class config:
 
 
 
-def var_replace(s, values_original):
+#Note: case of keys IS sensative
+def replace(s, values_original):
 	"""Replaces all instances in s (regardless of case) of {{KEY}} with values_original[KEY]"""
 
 	values = {}
@@ -74,6 +75,7 @@ def untar(filepath, dest):
 
 def intake(conf, filepath):
 	dir_processing = conf.general['dir']['processing'] + str(randrange(0,99999)) + '/'
+	print('Processing package in ' + dir_processing)
 	dir_processing_orig = dir_processing + 'original/'
 
 	name = untar(filepath, dir_processing_orig)
@@ -83,6 +85,22 @@ def intake(conf, filepath):
 		return
 	Aqueduct = json_file(dir_processing_orig+'debian/Aqueduct')
 
-	for operatingsystem in Aqueduct['oses']:
-		for release in Aqueduct['oses'][operatingsystem]['releases'].replace(' ','').split(','):
-			shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
+
+	if Aqueduct['version'] < 1:
+		for operatingsystem in Aqueduct['oses']:
+			var_dictionary = {'os' : operatingsystem}
+			for release in Aqueduct['oses'][operatingsystem]['releases'].replace(' ','').split(','):
+				var_dictionary['release'] = release
+				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
+
+				for target in Aqueduct['modify']:
+					target_path = "%s%s_%s/%s" % (dir_processing, operatingsystem, release, target)
+					f = open(target_path, 'r')
+					data = f.read()
+					f.close()
+					f = open(target_path, 'w')
+					f.write(replace(data, var_dictionary))
+					f.close()
+
+	else:
+		print("Unrecognized aqueduct version: " + Aqueduct['version'])
