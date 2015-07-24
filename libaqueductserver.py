@@ -110,7 +110,7 @@ def intake(conf, filepath):
 
 				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
 				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
-				package_modify(Aqueduct, dir_processing, var_dictionary)
+				package_modify(Aqueduct, target_dir, var_dictionary)
 				#buildserver_submit()
 				
 
