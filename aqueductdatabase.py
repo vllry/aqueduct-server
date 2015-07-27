@@ -13,8 +13,10 @@ def _connect():
 
 
 
-def ensure_tables_exist():
-	builders = """
+#Function to create/modify tables to create the expected environment
+def _ensure_tables_exist():
+	tables = [
+"""
 CREATE TABLE IF NOT EXISTS builders (
 	address VARCHAR(255) NOT NULL,
 	fingerprint VARCHAR(32) NOT NULL,
@@ -23,25 +25,46 @@ CREATE TABLE IF NOT EXISTS builders (
 	PRIMARY KEY(address),
 	UNIQUE(fingerprint)
 );
+""",
 """
-	builder_releases = """
 CREATE TABLE IF NOT EXISTS builder_releases (
 	builderid VARCHAR(255),
 	releasename VARCHAR(16) NOT NULL,
 	PRIMARY KEY(builderid, releasename),
 	FOREIGN KEY(builderid) REFERENCES builders(address)
 );
+""",
 """
+CREATE TABLE IF NOT EXISTS jobs (
+	jobid INT NOT NULL AUTO_INCREMENT,
+	jobstatus ENUM('processing', 'complete', 'failed') DEFAULT 'processing' NOT NULL,
+	PRIMARY KEY(jobid)
+);
+""",
+"""
+CREATE TABLE IF NOT EXISTS tasks (
+	jobid INT NOT NULL,
+	os VARCHAR(16) NOT NULL,
+	releasename VARCHAR(16) NOT NULL,
+	taskstatus ENUM('unassigned', 'assigned', 'built', 'failed') DEFAULT 'unassigned' NOT NULL,
+	assignee VARCHAR(255),
+	sourcedir VARCHAR(255) NOT NULL,
+	resultdir VARCHAR(255),
+	PRIMARY KEY(jobid, os, releasename),
+	FOREIGN KEY(jobid) REFERENCES jobs(jobid),
+	FOREIGN KEY(assignee) REFERENCES builders(address),
+	UNIQUE(sourcedir),
+	UNIQUE(resultdir) 
+);
+"""
+]
 
 	con = _connect()
 	cur = con.cursor()
-	cur.execute(builders)
-	cur.execute(builder_releases)
+	for table in tables:
+		cur.execute(table)
 	con.commit()
 
 
 
-
-
-
-ensure_tables_exist()
+_ensure_tables_exist() #Runs on module load.
