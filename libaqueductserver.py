@@ -6,6 +6,8 @@ from random import randrange
 import shutil
 import tarfile
 
+import aqueductbuilderfacade as builder
+
 
 
 def json_file(filepath):
@@ -85,10 +87,6 @@ def package_modify(Aqueduct, dir_processing, var_dictionary):
 
 
 
-#def buildserver_submit
-
-
-
 def intake(conf, filepath):
 	dir_processing = conf.general['dir']['processing'] + str(randrange(0,99999)) + '/'
 	print('Processing package in ' + dir_processing)
@@ -111,7 +109,11 @@ def intake(conf, filepath):
 				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
 				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
 				package_modify(Aqueduct, target_dir, var_dictionary)
-				#buildserver_submit()
+				builder.submit('http://localhost:6501/build/submit', target_dir, {
+					'callbackurl' : 'http://localhost:6500/nothing?%success&%url',
+					'os' : operatingsystem,
+					'release' : release
+				})
 				
 
 	else:

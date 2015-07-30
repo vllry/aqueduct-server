@@ -20,6 +20,7 @@ def _ensure_tables_exist():
 CREATE TABLE IF NOT EXISTS builders (
 	address VARCHAR(255) NOT NULL,
 	fingerprint VARCHAR(32) NOT NULL,
+	pubkey TEXT NOT NULL,
 	arch VARCHAR(8) NOT NULL,
 	os VARCHAR(16) NOT NULL,
 	PRIMARY KEY(address),
@@ -44,17 +45,18 @@ CREATE TABLE IF NOT EXISTS jobs (
 """
 CREATE TABLE IF NOT EXISTS tasks (
 	jobid INT NOT NULL,
-	os VARCHAR(16) NOT NULL,
-	releasename VARCHAR(16) NOT NULL,
+	buildos VARCHAR(16) NOT NULL,
+	buildrelease VARCHAR(16) NOT NULL,
+	buildarch VARCHAR(8) NOT NULL,
 	taskstatus ENUM('unassigned', 'assigned', 'built', 'failed') DEFAULT 'unassigned' NOT NULL,
 	assignee VARCHAR(255),
 	sourcedir VARCHAR(255) NOT NULL,
 	resultdir VARCHAR(255),
-	PRIMARY KEY(jobid, os, releasename),
+	PRIMARY KEY(jobid, buildos, buildrelease),
 	FOREIGN KEY(jobid) REFERENCES jobs(jobid),
 	FOREIGN KEY(assignee) REFERENCES builders(address),
 	UNIQUE(sourcedir),
-	UNIQUE(resultdir) 
+	UNIQUE(resultdir)
 );
 """
 ]
@@ -64,6 +66,42 @@ CREATE TABLE IF NOT EXISTS tasks (
 	for table in tables:
 		cur.execute(table)
 	con.commit()
+
+
+
+def add_builder(address, fingerprint, pubkey, arch, os):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("INSERT INTO builders(address, fingerprint, pubkey, arch, os) VALUES('%s', '%s', '%s', '%s', '%s')" % (address, fingerprint, pubkey, arch, os))
+	con.commit()
+
+
+
+def get_free_builder_supporting_release(release, arch, os):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+SELECT *
+	FROM
+	builders JOIN builder_releases ON builders.address = builder_releases.builderid
+WHERE arch='%s' AND os='%s' AND releasename='%s' AND
+address NOT IN
+(SELECT assignee AS address FROM tasks WHERE taskstatus='assigned')
+""" % (arch, os, release))
+	return cur.fetchone()
+
+
+
+def get_builder_supporting_release(release, arch, os):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+SELECT *
+	FROM
+	builders JOIN builder_releases ON builders.address = builder_releases.builderid
+WHERE arch='%s' AND os='%s' AND releasename='%s'
+""" % (arch, os, release))
+	return cur.fetchone()
 
 
 
