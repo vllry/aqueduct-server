@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 from json import load
 import pymysql as mysql
 
@@ -18,23 +16,23 @@ def _ensure_tables_exist():
 	tables = [
 """
 CREATE TABLE IF NOT EXISTS builders (
-	builderid VARCHAR(16) NOT NULL,
 	address VARCHAR(255) NOT NULL,
-	fingerprint VARCHAR(32) NOT NULL,
+	fingerprint VARCHAR(64) NOT NULL,
 	pubkey TEXT NOT NULL,
+	label VARCHAR(16) NOT NULL,
 	arch VARCHAR(8) NOT NULL,
 	os VARCHAR(16) NOT NULL,
-	PRIMARY KEY(builderid),
-	UNIQUE(address),
-	UNIQUE(pubkey)
+	PRIMARY KEY(fingerprint, address),
+	UNIQUE(fingerprint, pubkey)
 );
 """,
 """
 CREATE TABLE IF NOT EXISTS builder_releases (
-	builderid VARCHAR(16),
+	builder_address VARCHAR(255) NOT NULL,
+	builder_fingerprint VARCHAR(64) NOT NULL,
 	releasename VARCHAR(16) NOT NULL,
-	PRIMARY KEY(builderid, releasename),
-	FOREIGN KEY(builderid) REFERENCES builders(builderid)
+	PRIMARY KEY(builder_address, builder_fingerprint, releasename),
+	FOREIGN KEY(builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint)
 );
 """,
 """
@@ -47,16 +45,17 @@ CREATE TABLE IF NOT EXISTS jobs (
 """
 CREATE TABLE IF NOT EXISTS tasks (
 	jobid INT NOT NULL,
-	buildos VARCHAR(16) NOT NULL,
-	buildrelease VARCHAR(16) NOT NULL,
-	buildarch VARCHAR(8) NOT NULL,
+	build_os VARCHAR(16) NOT NULL,
+	build_release VARCHAR(16) NOT NULL,
+	build_arch VARCHAR(8) NOT NULL,
 	taskstatus ENUM('unassigned', 'assigned', 'built', 'failed') DEFAULT 'unassigned' NOT NULL,
-	builderid VARCHAR(16),
+	builder_address VARCHAR(255),
+	builder_fingerprint VARCHAR(64),
 	sourcedir VARCHAR(255) NOT NULL,
 	resultdir VARCHAR(255),
-	PRIMARY KEY(jobid, buildos, buildrelease),
+	PRIMARY KEY(jobid, build_os, build_release),
 	FOREIGN KEY(jobid) REFERENCES jobs(jobid),
-	FOREIGN KEY(builderid) REFERENCES builders(builderid),
+	FOREIGN KEY(builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint),
 	UNIQUE(sourcedir),
 	UNIQUE(resultdir)
 );
@@ -71,18 +70,18 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 
 
-def add_builder(builderid, address, fingerprint, pubkey, arch, os):
+def add_builder(label, address, fingerprint, pubkey, arch, os):
 	con = _connect()
 	cur = con.cursor()
-	cur.execute("INSERT INTO builders(builderid, address, fingerprint, pubkey, arch, os) VALUES('%s', '%s', '%s', '%s', '%s')" % (builderid, address, fingerprint, pubkey, arch, os))
+	cur.execute("INSERT INTO builders(label, address, fingerprint, pubkey, arch, os) VALUES('%s', '%s', '%s', '%s', '%s', '%s')" % (label, address, fingerprint, pubkey, arch, os))
 	con.commit()
 
 
 
-def add_builder_release(builderid, release):
+def add_builder_release(builder_address, builder_fingerprint, release):
 	con = _connect()
 	cur = con.cursor()
-	cur.execute("INSERT INTO builder_releases(builderid, releasename) VALUES('%s', '%s')" % (builderid, release))
+	cur.execute("INSERT INTO builder_releases(builder_address, builder_fingerprint, releasename) VALUES('%s', '%s', '%s')" % (builder_address, builder_fingerprint, release))
 	con.commit()
 
 
