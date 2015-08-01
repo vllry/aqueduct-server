@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS builders (
 	arch VARCHAR(8) NOT NULL,
 	os VARCHAR(16) NOT NULL,
 	PRIMARY KEY(fingerprint, address),
-	UNIQUE(fingerprint, pubkey)
+	KEY(fingerprint),
+	KEY(address)
 );
 """,
 """
@@ -32,8 +33,8 @@ CREATE TABLE IF NOT EXISTS builder_releases (
 	builder_fingerprint VARCHAR(64) NOT NULL,
 	releasename VARCHAR(16) NOT NULL,
 	PRIMARY KEY(builder_address, builder_fingerprint, releasename),
-	FOREIGN KEY(builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint)
-);
+	FOREIGN KEY builder_id_fkeys (builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint)
+) ENGINE=InnoDB;
 """,
 """
 CREATE TABLE IF NOT EXISTS jobs (
@@ -53,18 +54,17 @@ CREATE TABLE IF NOT EXISTS tasks (
 	builder_fingerprint VARCHAR(64),
 	sourcedir VARCHAR(255) NOT NULL,
 	resultdir VARCHAR(255),
-	PRIMARY KEY(jobid, build_os, build_release),
+	PRIMARY KEY(jobid, build_os, build_release, build_arch),
 	FOREIGN KEY(jobid) REFERENCES jobs(jobid),
-	FOREIGN KEY(builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint),
-	UNIQUE(sourcedir),
-	UNIQUE(resultdir)
-);
+	FOREIGN KEY(builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint)
+) ENGINE=InnoDB;
 """
 ]
 
 	con = _connect()
 	cur = con.cursor()
 	for table in tables:
+		print('Running ' + table[:50] + '...')
 		cur.execute(table)
 	con.commit()
 
@@ -91,9 +91,9 @@ def add_tasks(tasks):
 	cur = con.cursor()
 	cur.execute("INSERT INTO jobs(jobstatus) VALUES('processing')")
 	cur.execute("SELECT LAST_INSERT_ID()") #TODO: investigate safer alternative
-	jobid = cur.fetchone()
+	jobid = cur.fetchone()[0]
 	for target in tasks:
-		cur.execute("INSERT INTO tasks(jobid, buildarch, buildrelease, buildos, sourcedir) VALUES(%s, '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release', target['os'], target['sourcedir']))
+		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os, sourcedir) VALUES('%s', '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os'], target['sourcedir']))
 	con.commit()
 
 
@@ -104,10 +104,13 @@ def get_free_builder_supporting_release(arch, os, release):
 	cur.execute("""
 SELECT *
 	FROM
-	builders JOIN builder_releases ON builders.builderid = builder_releases.builderid
+	builders JOIN builder_releases ON builders.address = builder_releases.builder_address AND builders.fingerprint = builder_releases.builder_fingerprint
 WHERE arch='%s' AND os='%s' AND releasename='%s' AND
-builderid NOT IN
-(SELECT builderid FROM tasks WHERE taskstatus='assigned')
+NOT EXISTS 
+	(SELECT 1
+		FROM tasks
+		WHERE tasks.builder_address = builders.address AND tasks.builder_fingerprint = builders.fingerprint AND taskstatus='assigned'
+	);
 """ % (arch, os, release))
 	return cur.fetchone()
 
@@ -117,13 +120,16 @@ def get_free_builder(arch, os):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT *
+SELECT b.*
 	FROM
-	builders
+	builders AS b
 WHERE arch='%s' AND os='%s' AND
-builderid NOT IN
-(SELECT builderid FROM tasks WHERE taskstatus='assigned')
-""" % (arch, os, release))
+NOT EXISTS 
+	(SELECT 1
+		FROM tasks AS t
+		WHERE t.builder_address = b.address AND t.builder_fingerprint = b.fingerprint AND taskstatus='assigned'
+	);
+""" % (arch, os))
 	return cur.fetchone()
 
 
@@ -132,9 +138,9 @@ def get_builder_supporting_release(arch, os, release):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT *
+SELECT address, fingerprint
 	FROM
-	builders JOIN builder_releases ON builders.builderid = builder_releases.builderid
+	builders JOIN builder_releases ON builders.address = builder_releases.builder_address AND builders.fingerprint = builder_releases.builder_fingerprint
 WHERE arch='%s' AND os='%s' AND releasename='%s'
 """ % (arch, os, release))
 	return cur.fetchone()
@@ -145,11 +151,11 @@ def get_builder(arch, os):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT *
+SELECT address, fingerprint
 	FROM
 	builders
 WHERE arch='%s' AND os='%s'
-""" % (arch, os, release))
+""" % (arch, os))
 	return cur.fetchone()
 
 
