@@ -6,7 +6,8 @@ from random import randrange
 import shutil
 import tarfile
 
-import aqueductbuilderfacade as builder
+import aqueductbuilderinterface as builder_interface
+import aqueductdatabase as db
 
 
 
@@ -36,12 +37,12 @@ class config:
 		repo_conf = json_file(self.general['repositories'])
 
 		for repo in repo_conf:
-			self.repos[repo] = {}
+			self.repos[repo] = {'releases':{}, 'alliases':repo_conf[repo]['alliases']}
 			for release in repo_conf[repo]['releases']:
-				self.repos[repo][release] = repo_conf[repo]['releases'][release]
+				self.repos[repo]['releases'][release] = repo_conf[repo]['releases'][release]
 				for attribute in attributes:
-					if attribute not in self.repos[repo][release] and attribute in repo_conf[repo]['defaults']:
-						self.repos[repo][release][attribute] = repo_conf[repo]['defaults'][attribute]
+					if attribute not in self.repos[repo]['releases'][release] and attribute in repo_conf[repo]['defaults']:
+						self.repos[repo]['releases'][release][attribute] = repo_conf[repo]['defaults'][attribute]
 
 
 
@@ -55,12 +56,12 @@ def replace(s, values_original):
 
 	s_lower = s.lower()
 	for key in values.keys():
-		pos = s_lower.find(key)
+		pos = s_lower.find(key.lower())
 		while pos != -1:
 			old = s[pos:pos+len(key)]
 			s = s.replace(old, values[key])
 			s_lower = s.lower()
-			pos = s_lower.find(key)
+			pos = s_lower.find(key.lower())
 	return s
 
 
@@ -101,19 +102,23 @@ def intake(conf, filepath):
 
 
 	if Aqueduct['version'] < 1:
+		builds = []
 		for operatingsystem in Aqueduct['oses']:
 			var_dictionary = {'os' : operatingsystem}
-			for release in Aqueduct['oses'][operatingsystem]['releases'].replace(' ','').split(','):
+			print(conf.repos[operatingsystem]['alliases'])
+			releases = replace(Aqueduct['oses'][operatingsystem]['releases'].replace(' ',''), conf.repos[operatingsystem]['alliases']).split(',')
+			print(releases)
+			for release in releases:
 				var_dictionary['release'] = release
 
 				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
 				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
 				package_modify(Aqueduct, target_dir, var_dictionary)
-				builder.submit('http://localhost:6501/build/submit', target_dir, {
-					'callbackurl' : 'http://localhost:6500/nothing?%success&%url',
-					'os' : operatingsystem,
-					'release' : release
-				})
+				builds.append({'arch':'amd64', 'os':operatingsystem, 'release':release, 'sourcedir':target_dir})
+		jobid = db.add_tasks(builds)
+		for b in range(0,len(builds)):
+			builds[b]['jobid'] = jobid
+		builder_interface.queue_tasks(builds)
 				
 
 	else:

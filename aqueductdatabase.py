@@ -3,6 +3,33 @@ import pymysql as mysql
 
 
 
+def build_dict(items, keys):
+	d = {}
+	if not items:
+		return {}
+	elif len(items) != len(keys):
+		print('WARNING: aqueductdatabase.build_dict() given an unequal number of items and keys')
+	for i in range(0,len(keys)):
+		d[keys[i]] = items[i]
+	return d
+
+
+
+def build_dict_list(items_list, keys):
+	l = []
+	if not items_list:
+		return []
+	for items in items_list:
+		d = {}
+		if len(items) != len(keys):
+			print('WARNING: aqueductdatabase.build_dict_list() given an unequal number of items and keys')
+		for i in range(0,len(keys)):
+			d[keys[i]] = items[i]
+		l.append(d)
+	return l
+
+
+
 def _connect():
 	f = open('/home/vallery/Development/Aqueduct/aqueduct-server/etc/aqueduct-server/database.conf')
 	conf = load(f)
@@ -11,7 +38,7 @@ def _connect():
 
 
 
-#Function to create/modify tables to create the expected environment
+#Function to create/modify tables, to create the expected environment
 def _ensure_tables_exist():
 	tables = [
 """
@@ -95,6 +122,23 @@ def add_tasks(tasks):
 	for target in tasks:
 		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os, sourcedir) VALUES('%s', '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os'], target['sourcedir']))
 	con.commit()
+	return jobid
+
+
+
+def get_unassigned_tasks():
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("SELECT jobid, build_arch, build_os, build_release, sourcedir FROM tasks WHERE taskstatus='unassigned'")
+	return cur.fetchall()
+
+
+
+def assign_task(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("UPDATE tasks SET taskstatus='assigned', builder_address='%s', builder_fingerprint='%s' WHERE jobid='%s' AND build_arch='%s' AND build_os='%s' AND build_release='%s'" % (builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release))
+	con.commit()
 
 
 
@@ -102,7 +146,7 @@ def get_free_builder_supporting_release(arch, os, release):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT *
+SELECT address, fingerprint
 	FROM
 	builders JOIN builder_releases ON builders.address = builder_releases.builder_address AND builders.fingerprint = builder_releases.builder_fingerprint
 WHERE arch='%s' AND os='%s' AND releasename='%s' AND
@@ -112,7 +156,7 @@ NOT EXISTS
 		WHERE tasks.builder_address = builders.address AND tasks.builder_fingerprint = builders.fingerprint AND taskstatus='assigned'
 	);
 """ % (arch, os, release))
-	return cur.fetchone()
+	return build_dict(cur.fetchone(), ('address', 'fingerprint'))
 
 
 
@@ -120,17 +164,17 @@ def get_free_builder(arch, os):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT b.*
+SELECT address, fingerprint
 	FROM
-	builders AS b
+	builders
 WHERE arch='%s' AND os='%s' AND
 NOT EXISTS 
 	(SELECT 1
 		FROM tasks AS t
-		WHERE t.builder_address = b.address AND t.builder_fingerprint = b.fingerprint AND taskstatus='assigned'
+		WHERE t.builder_address = builders.address AND t.builder_fingerprint = builders.fingerprint AND taskstatus='assigned'
 	);
 """ % (arch, os))
-	return cur.fetchone()
+	return build_dict(cur.fetchone(), ('address', 'fingerprint'))
 
 
 

@@ -23,6 +23,18 @@ def get_info():
 
 
 
+@route('/callback/', method='POST')
+def handle_callback():
+	print(request.forms.get('jobid'))
+	print(request.forms.get('arch'))
+	print(request.forms.get('os'))
+	print(request.forms.get('release'))
+	print(request.forms.get('success'))
+	print(request.forms.get('location'))
+	return "hi"
+
+
+
 @route('/submit', method='POST')
 def build_submit():
 	upload = request.files.data
