@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import json
 from os import listdir, path, remove
 from random import randrange
@@ -24,10 +22,10 @@ class config:
 
 	def __init__(self, config_file_path = "/home/vallery/Development/Aqueduct/aqueduct-server/etc/aqueduct-server/aqueduct-server.conf"):
 		attributes = [
-						'arch',
-						'components',
-						'distributions'
-					]
+			'arch',
+			'components',
+			'distributions'
+		]
 
 		self.repos = {}
 		self.general = json_file(config_file_path)
@@ -105,16 +103,37 @@ def intake(conf, filepath):
 		builds = []
 		for operatingsystem in Aqueduct['oses']:
 			var_dictionary = {'os' : operatingsystem}
-			print(conf.repos[operatingsystem]['alliases'])
 			releases = replace(Aqueduct['oses'][operatingsystem]['releases'].replace(' ',''), conf.repos[operatingsystem]['alliases']).split(',')
-			print(releases)
+
 			for release in releases:
 				var_dictionary['release'] = release
 
+				#Modify the source for this particular os/release
 				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
 				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
 				package_modify(Aqueduct, target_dir, var_dictionary)
-				builds.append({'arch':'amd64', 'os':operatingsystem, 'release':release, 'sourcedir':target_dir})
+
+				arches = []
+				f = open(target_dir+'debian/control', 'r')
+				control = f.read().split('\n')
+				for line in control:
+					if line.startswith('Architecture'):
+						line = line.split(':', 1)[-1].replace(' ', '')
+						if line == 'any':
+							arches = conf.repos[operatingsystem][release]['arches']
+							try:
+								arches.remove('source')
+							except ValueError:
+								pass
+						else:
+							arches = line.split(',')
+						break
+				f.close()
+
+				for arch in arches:
+					print("Adding build for arch %s, os %s, release %s" % (arch, operatingsystem, release))
+					builds.append({'arch':arch, 'os':operatingsystem, 'release':release, 'sourcedir':target_dir})
+
 		jobid = db.add_tasks(builds)
 		for b in range(0,len(builds)):
 			builds[b]['jobid'] = jobid

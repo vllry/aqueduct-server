@@ -31,14 +31,29 @@ def queue_tasks(tasks):
 		q.put((time.time(), (task['jobid'], task['arch'], task['os'], task['release'], task['sourcedir'])))
 
 
+
 def pick_builder(arch, os, release, urgency='low'):
 	address = ''
 	builder = db.get_free_builder_supporting_release(arch, os, release)
 	if not builder:
 		builder = db.get_free_builder(arch, os)
+	print(builder)
 	return builder
 
 
+
+
+
+#class builder_monitor(threading.Thread):
+#	while True:
+#		builders = db.get_all_builders()
+#		for builder in builders:
+#			pass
+#			#Check if up and what task(s) it has
+#			#Check if task(s) were assigned
+#			#Unassign tasks if relavent
+#			#Update db info about builder id relavent
+#		time.sleep(60)
 
 
 
@@ -48,7 +63,7 @@ class queue_monitor(threading.Thread):
 		self.q = q
 		tasks = db.get_unassigned_tasks()
 		for task in tasks:
-			q.put((-int(time.time()), task))
+			q.put((time.time(), task))
 		threading.Thread.__init__(self)
    
 
@@ -72,7 +87,6 @@ class queue_monitor(threading.Thread):
 			for x in data: #Put the unassigned tasks back in the queue
 				q.put(x)
 			time.sleep(20)
-		print("NOPE")
 
 
 

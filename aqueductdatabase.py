@@ -85,13 +85,26 @@ CREATE TABLE IF NOT EXISTS tasks (
 	FOREIGN KEY(jobid) REFERENCES jobs(jobid),
 	FOREIGN KEY(builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint)
 ) ENGINE=InnoDB;
+""",
+"""
+CREATE TABLE IF NOT EXISTS assignments (
+	jobid INT NOT NULL,
+	build_arch VARCHAR(8) NOT NULL,
+	build_os VARCHAR(16) NOT NULL,
+	build_release VARCHAR(16) NOT NULL,
+	builder_address VARCHAR(255),
+	builder_fingerprint VARCHAR(64),
+	PRIMARY KEY(jobid, build_os, build_release, build_arch),
+	FOREIGN KEY(jobid) REFERENCES jobs(jobid),
+	FOREIGN KEY(builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint)
+) ENGINE=InnoDB;
 """
 ]
 
 	con = _connect()
 	cur = con.cursor()
 	for table in tables:
-		print('Running ' + table[:50] + '...')
+		#print('Running ' + table[:50] + '...')
 		cur.execute(table)
 	con.commit()
 
@@ -137,8 +150,17 @@ def get_unassigned_tasks():
 def assign_task(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release):
 	con = _connect()
 	cur = con.cursor()
-	cur.execute("UPDATE tasks SET taskstatus='assigned', builder_address='%s', builder_fingerprint='%s' WHERE jobid='%s' AND build_arch='%s' AND build_os='%s' AND build_release='%s'" % (builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release))
+	cur.execute("UPDATE tasks SET taskstatus='assigned' WHERE jobid='%s' AND build_arch='%s' AND build_os='%s' AND build_release='%s'" % (jobid, build_arch, build_os, build_release))
+	cur.execute("INSERT INTO assignments(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release) VALUES('%s', '%s', '%s', '%s', '%s', '%s')" % (builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release))
 	con.commit()
+
+
+
+def arch_condition_string(arch):
+	if arch == 'all':
+		return ''
+	else:
+		return "arch='%s' AND" % arch
 
 
 
@@ -148,14 +170,14 @@ def get_free_builder_supporting_release(arch, os, release):
 	cur.execute("""
 SELECT address, fingerprint
 	FROM
-	builders JOIN builder_releases ON builders.address = builder_releases.builder_address AND builders.fingerprint = builder_releases.builder_fingerprint
-WHERE arch='%s' AND os='%s' AND releasename='%s' AND
+	builders AS b JOIN builder_releases ON b.address = builder_releases.builder_address AND b.fingerprint = builder_releases.builder_fingerprint
+WHERE %s os='%s' AND releasename='%s' AND
 NOT EXISTS 
 	(SELECT 1
-		FROM tasks
-		WHERE tasks.builder_address = builders.address AND tasks.builder_fingerprint = builders.fingerprint AND taskstatus='assigned'
+		FROM assignments AS a
+		WHERE a.builder_address = b.address AND a.builder_fingerprint = b.fingerprint
 	);
-""" % (arch, os, release))
+""" % (arch_condition_string(arch), os, release))
 	return build_dict(cur.fetchone(), ('address', 'fingerprint'))
 
 
@@ -166,14 +188,14 @@ def get_free_builder(arch, os):
 	cur.execute("""
 SELECT address, fingerprint
 	FROM
-	builders
-WHERE arch='%s' AND os='%s' AND
+	builders AS b
+WHERE %s os='%s' AND
 NOT EXISTS 
 	(SELECT 1
-		FROM tasks AS t
-		WHERE t.builder_address = builders.address AND t.builder_fingerprint = builders.fingerprint AND taskstatus='assigned'
+		FROM assignments AS a
+		WHERE a.builder_address = b.address AND a.builder_fingerprint = b.fingerprint
 	);
-""" % (arch, os))
+""" % (arch_condition_string(arch), os))
 	return build_dict(cur.fetchone(), ('address', 'fingerprint'))
 
 
@@ -185,8 +207,8 @@ def get_builder_supporting_release(arch, os, release):
 SELECT address, fingerprint
 	FROM
 	builders JOIN builder_releases ON builders.address = builder_releases.builder_address AND builders.fingerprint = builder_releases.builder_fingerprint
-WHERE arch='%s' AND os='%s' AND releasename='%s'
-""" % (arch, os, release))
+WHERE %s os='%s' AND releasename='%s'
+""" % (arch_condition_string(arch), os, release))
 	return cur.fetchone()
 
 
@@ -198,9 +220,20 @@ def get_builder(arch, os):
 SELECT address, fingerprint
 	FROM
 	builders
-WHERE arch='%s' AND os='%s'
-""" % (arch, os))
+WHERE %s os='%s'
+""" % (arch_condition_string(arch), os))
 	return cur.fetchone()
+
+
+def get_all_builders():
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+SELECT address, fingerprint, label, arch, os
+	FROM
+	builders
+""")
+	return cur.fetchall()
 
 
 
