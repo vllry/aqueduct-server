@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 	build_os VARCHAR(16) NOT NULL,
 	build_release VARCHAR(16) NOT NULL,
 	build_arch VARCHAR(8) NOT NULL,
-	taskstatus ENUM('unassigned', 'assigned', 'built', 'failed') DEFAULT 'unassigned' NOT NULL,
+	taskstatus ENUM('unassigned', 'assigned', 'built', 'failed', 'cancelled') DEFAULT 'unassigned' NOT NULL,
 	builder_address VARCHAR(255),
 	builder_fingerprint VARCHAR(64),
 	sourcedir VARCHAR(255) NOT NULL,
@@ -136,6 +136,25 @@ def add_tasks(tasks):
 		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os, sourcedir) VALUES('%s', '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os'], target['sourcedir']))
 	con.commit()
 	return jobid
+
+
+
+def task_done(jobid, arch, os, release):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("UPDATE tasks SET taskstatus='built' WHERE jobid='%s' AND build_arch='%s' AND build_os='%s' AND build_release='%s'" % (jobid, arch, os, release))
+	cur.execute("DELETE FROM assignments WHERE jobid='%s' AND build_arch='%s' AND build_os='%s' AND build_release='%s'" % (jobid, arch, os, release))
+	con.commit()
+
+
+
+def task_failed(jobid, arch, os, release):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("UPDATE tasks SET taskstatus='cancelled' WHERE jobid='%s'" % (jobid))
+	cur.execute("UPDATE tasks SET taskstatus='failed' WHERE jobid='%s' AND build_arch='%s' AND build_os='%s' AND build_release='%s'" % (jobid, arch, os, release))
+	cur.execute("DELETE FROM assignments WHERE jobid='%s'" % (jobid))
+	con.commit()
 
 
 

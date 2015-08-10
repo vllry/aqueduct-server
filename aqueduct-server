@@ -23,15 +23,23 @@ def get_info():
 
 
 
-@route('/callback/', method='POST')
+@route('/callback', method='POST')
 def handle_callback():
-	print(request.forms.get('jobid'))
-	print(request.forms.get('arch'))
-	print(request.forms.get('os'))
-	print(request.forms.get('release'))
-	print(request.forms.get('success'))
-	print(request.forms.get('location'))
-	return "hi"
+	jobid = request.forms.get('jobid')
+	arch = request.forms.get('arch')
+	operatingsystem = request.forms.get('os')
+	release = request.forms.get('release')
+	success = request.forms.get('success')
+	location = request.forms.get('location')
+	if not (jobid and arch and operatingsystem and release and success and location):
+		return {'success':False, 'message':'Missing parameters'}
+
+	if success == '1':
+		aqueduct.task_done(jobid, arch, operatingsystem, release)
+	else:
+		aqueduct.task_failed(jobid, arch, operatingsystem, release)
+
+	return {'success': True, 'message': 'Callback recieved'}
 
 
 

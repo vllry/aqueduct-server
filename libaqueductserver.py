@@ -1,19 +1,13 @@
 import json
 from os import listdir, path, remove
+import queue
 from random import randrange
 import shutil
 import tarfile
+import time
 
 import aqueductbuilderinterface as builder_interface
 import aqueductdatabase as db
-
-
-
-def json_file(filepath):
-	f = open(filepath, 'r')
-	data = json.load(f)
-	f.close()
-	return data
 
 
 
@@ -44,7 +38,16 @@ class config:
 
 
 
-#Note: case of keys IS sensative
+
+
+def json_file(filepath):
+	f = open(filepath, 'r')
+	data = json.load(f)
+	f.close()
+	return data
+
+
+
 def replace(s, values_original):
 	"""Replaces all instances in s (regardless of case) of {{KEY}} with values_original[KEY]"""
 
@@ -83,6 +86,20 @@ def package_modify(Aqueduct, dir_processing, var_dictionary):
 		f = open(target_path, 'w')
 		f.write(replace(data, var_dictionary))
 		f.close()
+
+
+
+def task_done(jobid, arch, os, release):
+	db.task_done(jobid, arch, os, release)
+	#Check if job is done
+	print("Task for jobid %s done" % (jobid))
+
+
+
+def task_failed(jobid, arch, os, release):
+	db.task_failed(jobid, arch, os, release)
+	#Send error
+	print("Task for jobid %s failed!" % (jobid))
 
 
 

@@ -1,13 +1,14 @@
-import queue
+from queue import Empty
 import time
 import threading
 
 import aqueductdatabase as db
 import libaqueduct as lib
+import libaqueductserver as aqueduct
 
 
 
-q = queue.PriorityQueue()
+queue = lib.PriorityQueue()
 
 
 
@@ -16,7 +17,7 @@ def assign_build(builder_address, builder_fingerprint, jobid, build_arch, build_
 	print("Task submitted to " + builder_address)
 	lib.targz(sourcedir, 'temp.tar.gz')
 	data = {
-		'callbackurl' : 'http://localhost:6500/callback/',
+		'callbackurl' : 'http://localhost:6500/callback',
 		'jobid' : jobid,
 		'arch' : build_arch,
 		'os' : build_os,
@@ -28,7 +29,7 @@ def assign_build(builder_address, builder_fingerprint, jobid, build_arch, build_
 
 def queue_tasks(tasks):
 	for task in tasks:
-		q.put((time.time(), (task['jobid'], task['arch'], task['os'], task['release'], task['sourcedir'])))
+		queue.put((task['jobid'], task['arch'], task['os'], task['release'], task['sourcedir']))
 
 
 
@@ -37,7 +38,6 @@ def pick_builder(arch, os, release, urgency='low'):
 	builder = db.get_free_builder_supporting_release(arch, os, release)
 	if not builder:
 		builder = db.get_free_builder(arch, os)
-	print(builder)
 	return builder
 
 
@@ -59,20 +59,21 @@ def pick_builder(arch, os, release, urgency='low'):
 
 class queue_monitor(threading.Thread):
 
-	def __init__ (self, q):
+	def __init__ (self, q, metaclass=lib.Singleton):
 		self.q = q
 		tasks = db.get_unassigned_tasks()
 		for task in tasks:
-			q.put((time.time(), task))
+			self.q.put((time.time(), task))
 		threading.Thread.__init__(self)
    
 
 	def run(self):
 		while True:
 			data = []
-			score,tup = q.get()
+			score,tup = self.q.get()
 
 			while tup: #For each task in the queue, try to find a builder
+				print(tup)
 				task = {'jobid' : tup[0], 'build_arch' : tup[1], 'build_os' : tup[2], 'build_release' : tup[3], 'sourcedir' : tup[4]}
 				builder = pick_builder(task['build_arch'], task['build_os'], task['build_release'])
 				if builder:
@@ -80,15 +81,15 @@ class queue_monitor(threading.Thread):
 				else:
 					data.append((score, tup))
 				try:
-					score,tup = q.get(block=False)
-				except queue.Empty:
+					score,tup = self.q.queue.get(block=False)
+				except Empty:
 					break
 
 			for x in data: #Put the unassigned tasks back in the queue
-				q.put(x)
+				self.q.queue.put(x)
 			time.sleep(20)
 
 
 
-monitor = queue_monitor(q)
+monitor = queue_monitor(queue)
 monitor.start()
