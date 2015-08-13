@@ -3,29 +3,24 @@ import pymysql as mysql
 
 
 
-def build_dict(items, keys):
+def dict_from_tup(keys, values):
 	d = {}
-	if not items:
+	if not values:
 		return {}
-	elif len(items) != len(keys):
-		print('WARNING: aqueductdatabase.build_dict() given an unequal number of items and keys')
+	elif len(keys) != len(values):
+		print('WARNING: aqueductdatabase.dict_from_tup() given an unequal number of items and keys')
+
 	for i in range(0,len(keys)):
-		d[keys[i]] = items[i]
+		d[keys[i]] = values[i]
 	return d
 
 
 
-def build_dict_list(items_list, keys):
+def dict_from_tup_list(keys, values_list):
 	l = []
-	if not items_list:
-		return []
-	for items in items_list:
-		d = {}
-		if len(items) != len(keys):
-			print('WARNING: aqueductdatabase.build_dict_list() given an unequal number of items and keys')
-		for i in range(0,len(keys)):
-			d[keys[i]] = items[i]
-		l.append(d)
+	for values in values_list:
+		l.append(dict_from_tup(keys, values))
+
 	return l
 
 
@@ -133,7 +128,7 @@ def add_tasks(tasks):
 	cur.execute("SELECT LAST_INSERT_ID()") #TODO: investigate safer alternative
 	jobid = cur.fetchone()[0]
 	for target in tasks:
-		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os, sourcedir) VALUES('%s', '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os'], target['sourcedir']))
+		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os, sourcedir) VALUES('%s', '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os'], target['source']))
 	con.commit()
 	return jobid
 
@@ -162,7 +157,7 @@ def get_unassigned_tasks():
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("SELECT jobid, build_arch, build_os, build_release, sourcedir FROM tasks WHERE taskstatus='unassigned'")
-	return cur.fetchall()
+	return dict_from_tup_list(('jobid', 'arch', 'os', 'release', 'source'), cur.fetchall())
 
 
 
@@ -197,7 +192,7 @@ NOT EXISTS
 		WHERE a.builder_address = b.address AND a.builder_fingerprint = b.fingerprint
 	);
 """ % (arch_condition_string(arch), os, release))
-	return build_dict(cur.fetchone(), ('address', 'fingerprint'))
+	return dict_from_tup(('address', 'fingerprint'), cur.fetchone())
 
 
 
@@ -215,7 +210,7 @@ NOT EXISTS
 		WHERE a.builder_address = b.address AND a.builder_fingerprint = b.fingerprint
 	);
 """ % (arch_condition_string(arch), os))
-	return build_dict(cur.fetchone(), ('address', 'fingerprint'))
+	return dict_from_tup(('address', 'fingerprint'), cur.fetchone())
 
 
 

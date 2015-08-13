@@ -149,7 +149,7 @@ def intake(conf, filepath):
 
 				for arch in arches:
 					print("Adding build for arch %s, os %s, release %s" % (arch, operatingsystem, release))
-					builds.append({'arch':arch, 'os':operatingsystem, 'release':release, 'sourcedir':target_dir})
+					builds.append({'arch':arch, 'os':operatingsystem, 'release':release, 'source':target_dir})
 
 		jobid = db.add_tasks(builds)
 		for b in range(0,len(builds)):
