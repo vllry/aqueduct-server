@@ -112,11 +112,59 @@ def add_builder(label, address, fingerprint, pubkey, arch, os):
 
 
 
+def get_builder_attribute(builder_address, builder_fingerprint, attr):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+SELECT %s
+FROM builders
+WHERE address='%s' AND fingerprint='%s'
+""" % (attr, builder_address, builder_fingerprint))
+	return cur.fetchone()[0]
+
+
+
+def set_builder_attribute(builder_address, builder_fingerprint, attr, value):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+UPDATE builders
+SET %s='%s'
+WHERE address='%s' AND fingerprint='%s'
+""" % (attr, value, builder_address, builder_fingerprint))
+	con.commit()
+
+
+
 def add_builder_release(builder_address, builder_fingerprint, release):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("INSERT INTO builder_releases(builder_address, builder_fingerprint, releasename) VALUES('%s', '%s', '%s')" % (builder_address, builder_fingerprint, release))
 	con.commit()
+
+
+
+def remove_builder_release(builder_address, builder_fingerprint, release):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+DELETE
+FROM builder_releases
+WHERE builder_address='%s' AND builder_fingerprint='%s' AND releasename='%s'
+""" % (builder_address, builder_fingerprint, release))
+	con.commit()
+
+
+
+def get_builder_releases(builder_address, builder_fingerprint):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+SELECT releasename
+FROM builder_releases
+WHERE builder_address='%s' AND builder_fingerprint='%s'
+""" % (builder_address, builder_fingerprint))
+	return cur.fetchall()
 
 
 
@@ -147,6 +195,21 @@ def mark_builder_online(address, fingerprint, state):
 	cur = con.cursor()
 	cur.execute("UPDATE builders SET online=%s WHERE address='%s' AND fingerprint='%s'" % (state, address, fingerprint))
 	con.commit()
+
+
+
+def is_builder_online(address, fingerprint):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("""
+SELECT online
+FROM builders
+WHERE address='%s' AND fingerprint='%s'
+""" % (address, fingerprint))
+	value = cur.fetchone()[0]
+	if value == b'\x01':
+		return True
+	return False
 
 
 

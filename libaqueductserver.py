@@ -51,6 +51,82 @@ class config:
 
 
 
+class Builder:
+	def __init__(self, address, fingerprint):
+		self.address = address
+		self.fingerprint = fingerprint
+		self._online = None
+		self._label = None
+		self._arch = None
+		self._os = None
+		self._releases = None
+
+	def online(self, current=None):
+		if self._online is None:
+			self._online = db.is_builder_online(self.address, self.fingerprint)
+		if current is not None:
+			self._online = current
+			db.mark_builder_online(self.address, self.fingerprint, int(current))
+		return self._online
+
+	def label(self, current=None):
+		if self._label is None:
+			self._label = db.get_builder_attribute(self.address, self.fingerprint, 'label')
+		if current is not None:
+			if self._label != current:
+				self._label = current
+				db.set_builder_attribute(self.address, self.fingerprint, 'label', current)
+		return self._label
+
+	def arch(self, current=None):
+		if self._arch is None:
+			self._arch = db.get_builder_attribute(self.address, self.fingerprint, 'arch')
+		if current is not None:
+			if self._arch != current:
+				self._arch = current
+				db.set_builder_attribute(self.address, self.fingerprint, 'arch', current)
+		return self._arch
+
+	def os(self, current=None):
+		if self._os is None:
+			self._os = db.get_builder_attribute(self.address, self.fingerprint, 'os')
+		if current is not None:
+			if self._os != current:
+				self._os = current
+				db.set_builder_attribute(self.address, self.fingerprint, 'os', current)
+		return self._os
+
+	def releases(self, current=None):
+		if self._releases is None:
+			self._releases = db.get_builder_releases(self.address, self.fingerprint)
+		if current is not None:
+			for r in self._releases:
+				if r not in current:
+					db.remove_builder_release(self.address, self.fingerprint, r)
+			for r in current:
+				if r not in self._releases:
+					db.add_builder_release(self.address, self.fingerprint, r)
+			self._releases = current
+		return self._releases
+
+	def tasks():
+		return db.get_tasks_assigned_to_builder(self.address, self.fingerprint)
+
+
+
+class Task:
+	def __init__(self, jobid, arch, os, release):
+		self.jobid = jobid
+		self.arch = arch
+		self.os = os
+		self.release = release
+
+	def assign_to(builder):
+		self.builder = builder
+		db.assign_task(builder.address, builder.fingerprint, self.jobid, self.arch, self.os, self.release)
+
+
+
 def json_file(filepath):
 	f = open(filepath, 'r')
 	data = json.load(f)
