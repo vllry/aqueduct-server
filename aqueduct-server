@@ -54,6 +54,7 @@ def build_submit():
 	path_to_source = conf.general['dir']['intake'] + upload.filename
 	upload.save(conf.general['dir']['intake'])
 
+	conf.print('info', 'New package submitted')
 	t = Thread(target=aqueduct.intake, args=(conf,path_to_source,))
 	t.start()
 

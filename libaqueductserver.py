@@ -26,14 +26,16 @@ class config:
 			if self.general['dir'][d][-1] != '/':
 				self.general['dir'][d] = self.general['dir'][d] + '/'
 		repo_conf = json_file(self.general['repositories'])
-		#if self.general['loglevel'] == 'error':
-		#	self.general['loglevel'] = 1
-		#elif self.general['loglevel'] == 'warn':
-		#	self.general['loglevel'] = 2
-		#elif self.general['loglevel'] == 'info':
-		#	self.general['loglevel'] = 3
-		#else
-		#	self.general['loglevel'] = 0
+		if self.general['loglevel'] == 'error':
+			self.general['loglevel'] = 1
+		elif self.general['loglevel'] == 'warn':
+			self.general['loglevel'] = 2
+		elif self.general['loglevel'] == 'info':
+			self.general['loglevel'] = 3
+		elif self.general['loglevel'] == 'debug':
+			self.general['loglevel'] = 4
+		else:
+			self.general['loglevel'] = 0
 
 		for repo in repo_conf:
 			self.repos[repo] = {'releases':{}, 'alliases':repo_conf[repo]['alliases']}
@@ -42,6 +44,10 @@ class config:
 				for attribute in attributes:
 					if attribute not in self.repos[repo]['releases'][release] and attribute in repo_conf[repo]['defaults']:
 						self.repos[repo]['releases'][release][attribute] = repo_conf[repo]['defaults'][attribute]
+
+	def print(self, kind, message):
+		if (kind == 'debug' and self.general['loglevel'] >= 4) or (kind == 'info' and self.general['loglevel'] >= 3) or (kind == 'warn' and self.general['loglevel'] >= 2) or (kind == 'error' and self.general['loglevel']):
+			print(kind.upper() + ': ' + str(message))
 
 
 

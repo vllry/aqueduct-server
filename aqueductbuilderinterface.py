@@ -63,7 +63,7 @@ class builder_monitor(threading.Thread):
 					db.delete_old_assignments(b['address'], b['fingerprint'])
 					for task in db.get_tasks_assigned_to_builder(b['address'], b['fingerprint']):
 						if task != info['building'] and task not in info['queue']:
-							print("Builder dropped task, unassigning")
+							#print("Builder %s,%s dropped task %s,%s,%s,%s, unassigning")
 							db.unassign_task_from_builder(b['address'], b['fingerprint'], task['jobid'], task['arch'], task['os'], task['release'])
 							queue.enqueue(task)
 				else:
