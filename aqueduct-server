@@ -5,6 +5,7 @@ import json
 from os import getuid
 from threading import Thread
 
+from aqueductdatabase import mark_all_builders_offline
 import libaqueductserver as aqueduct
 
 
@@ -64,6 +65,7 @@ def build_submit():
 
 
 if getuid() == 0:
+	mark_all_builders_offline()
 	run(host='', port=conf.general['port'], debug=True)
 else:
 	print('Please run aqueduct-server as root')

@@ -1,6 +1,5 @@
 import json
 from os import listdir, path, remove
-import queue
 from random import randrange
 import shutil
 import tarfile
@@ -27,6 +26,14 @@ class config:
 			if self.general['dir'][d][-1] != '/':
 				self.general['dir'][d] = self.general['dir'][d] + '/'
 		repo_conf = json_file(self.general['repositories'])
+		#if self.general['loglevel'] == 'error':
+		#	self.general['loglevel'] = 1
+		#elif self.general['loglevel'] == 'warn':
+		#	self.general['loglevel'] = 2
+		#elif self.general['loglevel'] == 'info':
+		#	self.general['loglevel'] = 3
+		#else
+		#	self.general['loglevel'] = 0
 
 		for repo in repo_conf:
 			self.repos[repo] = {'releases':{}, 'alliases':repo_conf[repo]['alliases']}
@@ -35,8 +42,6 @@ class config:
 				for attribute in attributes:
 					if attribute not in self.repos[repo]['releases'][release] and attribute in repo_conf[repo]['defaults']:
 						self.repos[repo]['releases'][release][attribute] = repo_conf[repo]['defaults'][attribute]
-
-
 
 
 

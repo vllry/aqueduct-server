@@ -1,3 +1,4 @@
+import json
 from queue import Empty
 import time
 import threading
@@ -23,7 +24,7 @@ def assign_build(builder_address, builder_fingerprint, jobid, build_arch, build_
 		'os' : build_os,
 		'release' : build_release,
 	}
-	lib.upload('temp.tar.gz', builder_address, data)
+	lib.upload('temp.tar.gz', builder_address+'/build/submit', data)
 
 
 
@@ -47,17 +48,27 @@ def pick_builder(arch, os, release, urgency='low'):
 class builder_monitor(threading.Thread):
 
 	def __init__ (self, q, metaclass=lib.Singleton):
-		pass
+		threading.Thread.__init__(self)
 
 	def run(self):
 		while True:
 			builders = db.get_all_builders()
-			for builder in builders:
-				pass
-				#info = 
-				#Check if task(s) were assigned
-				#Unassign tasks if relavent
-				#Update db info about builder if relavent
+			for b in builders:
+				result = lib.download(b['address'])
+				if result:
+					info = json.loads(str(result)[2:].rstrip("'"))
+					#print(info)
+					db.mark_builder_online(b['address'], b['fingerprint'], 1)
+					db.update_builder(b['address'], b['fingerprint'], info['name'], info['arch'], info['os'], [])
+					db.delete_old_assignments(b['address'], b['fingerprint'])
+					for task in db.get_tasks_assigned_to_builder(b['address'], b['fingerprint']):
+						if task != info['building'] and task not in info['queue']:
+							print("Builder dropped task, unassigning")
+							db.unassign_task_from_builder(b['address'], b['fingerprint'], task['jobid'], task['arch'], task['os'], task['release'])
+							queue.enqueue(task)
+				else:
+					db.mark_builder_online(b['address'], b['fingerprint'], 0)
+					db.unassign_tasks_from_builder(b['address'], b['fingerprint'])
 			time.sleep(60)
 
 
@@ -94,5 +105,7 @@ class queue_monitor(threading.Thread):
 
 
 
-monitor = queue_monitor(queue)
-monitor.start()
+bmonitor = builder_monitor(queue)
+bmonitor.start()
+qmonitor = queue_monitor(queue)
+qmonitor.start()
