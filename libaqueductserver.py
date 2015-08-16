@@ -1,7 +1,6 @@
 import json
 from os import listdir, path, remove
 from random import randrange
-import shutil
 import tarfile
 import time
 
@@ -97,74 +96,3 @@ def package_modify(Aqueduct, dir_processing, var_dictionary):
 		f = open(target_path, 'w')
 		f.write(replace(data, var_dictionary))
 		f.close()
-
-
-
-def task_done(jobid, arch, os, release):
-	db.task_done(jobid, arch, os, release)
-	#Check if job is done
-	print("Task for jobid %s done" % (jobid))
-
-
-
-def task_failed(jobid, arch, os, release):
-	db.task_failed(jobid, arch, os, release)
-	#Send error
-	print("Task for jobid %s failed!" % (jobid))
-
-
-
-def intake(conf, jobid, filepath):
-	dir_processing = conf.general['dir']['processing'] + str(jobid) + '/'
-	conf.print('debug', 'Processing package in ' + dir_processing)
-	dir_processing_orig = dir_processing + 'original/'
-
-	name = untar(filepath, dir_processing_orig)
-	dir_processing_orig += name + '/'
-	if path.isfile(dir_processing_orig):
-		conf.print('warn', "Tarfile did not have valid contents")
-		return
-	Aqueduct = json_file(dir_processing_orig+'debian/Aqueduct')
-
-	if Aqueduct['version'] < 1:
-		builds = []
-		for operatingsystem in Aqueduct['oses']:
-			var_dictionary = {'os' : operatingsystem}
-			releases = replace(Aqueduct['oses'][operatingsystem]['releases'].replace(' ',''), conf.repos[operatingsystem]['alliases']).split(',')
-
-			for release in releases:
-				var_dictionary['release'] = release
-
-				#Modify the source for this particular os/release
-				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
-				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
-				package_modify(Aqueduct, target_dir, var_dictionary)
-
-				arches = []
-				f = open(target_dir+'debian/control', 'r')
-				control = f.read().split('\n')
-				for line in control:
-					if line.startswith('Architecture'):
-						line = line.split(':', 1)[-1].replace(' ', '')
-						if line == 'any':
-							arches = conf.repos[operatingsystem][release]['arches']
-							try:
-								arches.remove('source')
-							except ValueError:
-								pass
-						else:
-							arches = line.split(',')
-						break
-				f.close()
-
-				for arch in arches:
-					conf.print('info', "Adding build for arch %s, os %s, release %s" % (arch, operatingsystem, release))
-					builds.append({'arch':arch, 'os':operatingsystem, 'release':release, 'source':target_dir})
-
-		for b in range(0,len(builds)):
-			builds[b]['jobid'] = jobid
-		builder_interface.queue_tasks(builds)
-				
-
-	else:
-		print("Unrecognized aqueduct version: " + Aqueduct['version'])

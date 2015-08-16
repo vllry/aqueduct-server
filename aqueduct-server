@@ -2,10 +2,12 @@
 
 from bottle import route, run, request#, static_file, abort
 import json
-from os import getuid, mkdir
+from os import getuid, mkdir, path
+import shutil
 from threading import Thread
 
-from aqueductdatabase import add_job, mark_all_builders_offline
+from aqueductbuilderinterface import queue_tasks
+import aqueductdatabase as db
 import libaqueductserver as aqueduct
 
 
@@ -36,9 +38,9 @@ def handle_callback():
 		return {'success':False, 'message':'Missing parameters'}
 
 	if success == '1':
-		aqueduct.task_done(jobid, arch, operatingsystem, release)
+		task_done(jobid, arch, operatingsystem, release)
 	else:
-		aqueduct.task_failed(jobid, arch, operatingsystem, release)
+		task_failed(jobid, arch, operatingsystem, release)
 
 	return {'success': True, 'message': 'Callback recieved'}
 
@@ -51,12 +53,12 @@ def build_submit():
 	if not upload or not upload.file:
 		return {'success': False, 'message': 'No file supplied'}
 
-	jobid = add_job()
+	jobid = db.add_job()
 	mkdir(conf.general['dir']['intake']+str(jobid))
 	upload.save(conf.general['dir']['intake'] + str(jobid))
 	conf.print('info', 'New package submitted, given jobid %s' % (jobid))
 
-	t = Thread(target=aqueduct.intake, args=(conf,jobid,conf.general['dir']['intake'] + str(jobid) + '/' + upload.filename))
+	t = Thread(target=intake, args=(conf,jobid,conf.general['dir']['intake'] + str(jobid) + '/' + upload.filename))
 	t.start()
 
 	return {
@@ -65,9 +67,82 @@ def build_submit():
 	}
 
 
+#Bottle routes above here
+#Regular functions below here
+
+
+def task_done(jobid, arch, os, release):
+	db.task_done(jobid, arch, os, release)
+	#Check if job is done
+	print("Task for jobid %s done" % (jobid))
+
+
+def task_failed(jobid, arch, os, release):
+	db.task_failed(jobid, arch, os, release)
+	#Send error
+	print("Task for jobid %s failed!" % (jobid))
+
+
+def intake(conf, jobid, filepath):
+	dir_processing = conf.general['dir']['processing'] + str(jobid) + '/'
+	conf.print('debug', 'Processing package in ' + dir_processing)
+	dir_processing_orig = dir_processing + 'original/'
+
+	name = aqueduct.untar(filepath, dir_processing_orig)
+	dir_processing_orig += name + '/'
+	if path.isfile(dir_processing_orig):
+		conf.print('warn', "Tarfile did not have valid contents")
+		return
+	Aqueduct = aqueduct.json_file(dir_processing_orig+'debian/Aqueduct')
+
+	if Aqueduct['version'] < 1:
+		builds = []
+		for operatingsystem in Aqueduct['oses']:
+			var_dictionary = {'os' : operatingsystem}
+			releases = aqueduct.replace(Aqueduct['oses'][operatingsystem]['releases'].replace(' ',''), conf.repos[operatingsystem]['alliases']).split(',')
+
+			for release in releases:
+				var_dictionary['release'] = release
+
+				#Modify the source for this particular os/release
+				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
+				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
+				aqueduct.package_modify(Aqueduct, target_dir, var_dictionary)
+
+				arches = []
+				f = open(target_dir+'debian/control', 'r')
+				control = f.read().split('\n')
+				for line in control:
+					if line.startswith('Architecture'):
+						line = line.split(':', 1)[-1].replace(' ', '')
+						if line == 'any':
+							arches = conf.repos[operatingsystem][release]['arches']
+							try:
+								arches.remove('source')
+							except ValueError:
+								pass
+						else:
+							arches = line.split(',')
+						break
+				f.close()
+
+				for arch in arches:
+					conf.print('info', "Adding build for arch %s, os %s, release %s" % (arch, operatingsystem, release))
+					builds.append({'arch':arch, 'os':operatingsystem, 'release':release, 'source':target_dir})
+
+		for b in range(0,len(builds)):
+			builds[b]['jobid'] = jobid
+		queue_tasks(builds)	
+
+	else:
+		print("Unrecognized aqueduct version: " + Aqueduct['version'])
+
+
+
+
 
 if getuid() == 0:
-	mark_all_builders_offline()
+	db.mark_all_builders_offline()
 	run(host='', port=conf.general['port'], debug=True)
 else:
 	print('Please run aqueduct-server as root')

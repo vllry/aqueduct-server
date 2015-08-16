@@ -204,7 +204,6 @@ class queue_monitor(threading.Thread):
 			task,score = self.q.dequeue_with_priority()
 
 			while True: #For each task in the queue, try to find a builder
-				print(task)
 				builder = pick_builder(task['arch'], task['os'], task['release'])
 				if builder:
 					assign_build(builder['address'], builder['fingerprint'], task['jobid'], task['arch'], task['os'], task['release'], task['source'])
