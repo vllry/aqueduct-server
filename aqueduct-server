@@ -12,7 +12,7 @@ import libaqueductserver as aqueduct
 
 
 
-conf = aqueduct.config()
+conf = aqueduct.Config()
 
 
 
@@ -74,13 +74,13 @@ def build_submit():
 def task_done(jobid, arch, os, release):
 	db.task_done(jobid, arch, os, release)
 	#Check if job is done
-	print("Task for jobid %s done" % (jobid))
+	conf.print('info', "Task for jobid %s done" % (jobid))
 
 
 def task_failed(jobid, arch, os, release):
 	db.task_failed(jobid, arch, os, release)
 	#Send error
-	print("Task for jobid %s failed!" % (jobid))
+	conf.print('info', "Task for jobid %s failed!" % (jobid))
 
 
 def intake(conf, jobid, filepath):
@@ -135,7 +135,7 @@ def intake(conf, jobid, filepath):
 		queue_tasks(builds)	
 
 	else:
-		print("Unrecognized aqueduct version: " + Aqueduct['version'])
+		conf.print('error', "Unrecognized aqueduct version: " + Aqueduct['version'])
 
 
 
@@ -145,4 +145,4 @@ if getuid() == 0:
 	db.mark_all_builders_offline()
 	run(host='', port=conf.general['port'], debug=True)
 else:
-	print('Please run aqueduct-server as root')
+	conf.print('error', 'Please run aqueduct-server as root')

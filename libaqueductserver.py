@@ -9,7 +9,7 @@ import aqueductdatabase as db
 
 
 
-class config:
+class Config:
 	"""Load and process the config files"""
 
 	def __init__(self, config_file_path = "/home/vallery/Development/Aqueduct/aqueduct-server/etc/aqueduct-server/aqueduct-server.conf"):

@@ -5,9 +5,11 @@ import threading
 
 import aqueductdatabase as db
 import libaqueduct as lib
+from libaqueductserver import Config
 
 
 
+conf = Config()
 queue = lib.PriorityQueue()
 
 
@@ -105,7 +107,7 @@ class Task:
 
 def assign_build(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release, sourcedir):
 	db.assign_task(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release)
-	print("Task submitted to " + builder_address)
+	conf.print('info', "Task submitted to " + builder_address)
 	lib.targz(sourcedir, 'temp.tar.gz')
 	data = {
 		'callbackurl' : 'http://localhost:6500/callback',
@@ -144,11 +146,11 @@ class builder_monitor(threading.Thread):
 			db_builders = db.get_all_builders()
 			for row in db_builders:
 				if all(b.address != row[0] or b.fingerprint != row[1] for b in builders):
-					print('Found new builder in the database')
+					conf.print('info', 'Found new builder in the database')
 					builders.append(Builder(row[0], row[1]))
 			for b in builders:
 				if all(b.address != row[0] or b.fingerprint != row[1] for row in db_builders):
-					print('Noticed that builder was deleted from the database')
+					conf.print('info', 'Noticed that builder was deleted from the database')
 					builders.remove(b)
 
 			db.delete_old_assignments()
@@ -179,7 +181,7 @@ class builder_monitor(threading.Thread):
 								match = True
 								break
 						if not match:
-							print("Builder dropped task, unassigning")
+							conf.print('info', 'Builder dropped task, unassigning')
 							b.unassign(task)
 							queue.enqueue(task)
 				else:
