@@ -105,8 +105,8 @@ def intake(conf, jobid, filepath):
 				var_dictionary['release'] = release
 
 				#Modify the source for this particular os/release
-				shutil.copytree(dir_processing_orig, '%s%s_%s' % (dir_processing, operatingsystem, release))
-				target_dir = "%s%s_%s/" % (dir_processing, operatingsystem, release)
+				shutil.copytree(dir_processing_orig, '%s%s/%s' % (dir_processing, operatingsystem, release))
+				target_dir = "%s%s/%s/" % (dir_processing, operatingsystem, release)
 				aqueduct.package_modify(Aqueduct, target_dir, var_dictionary)
 
 				arches = []
@@ -128,10 +128,11 @@ def intake(conf, jobid, filepath):
 
 				for arch in arches:
 					conf.print('info', "Adding build for arch %s, os %s, release %s" % (arch, operatingsystem, release))
-					builds.append({'arch':arch, 'os':operatingsystem, 'release':release, 'source':target_dir})
+					builds.append({'arch':arch, 'os':operatingsystem, 'release':release})
 
 		for b in range(0,len(builds)):
 			builds[b]['jobid'] = jobid
+		db.add_tasks_to_job(builds, jobid)
 		queue_tasks(builds)	
 
 	else:

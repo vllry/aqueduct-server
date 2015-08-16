@@ -105,10 +105,10 @@ class Task:
 
 
 
-def assign_build(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release, sourcedir):
+def assign_build(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release):
 	db.assign_task(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release)
 	conf.print('info', "Task submitted to " + builder_address)
-	lib.targz(sourcedir, 'temp.tar.gz')
+	lib.targz('%s%s/%s/%s' % (conf.general['dir']['processing'], str(jobid), build_os, build_release), 'temp.tar.gz')
 	data = {
 		'callbackurl' : 'http://localhost:6500/callback',
 		'jobid' : jobid,
@@ -182,7 +182,7 @@ class builder_monitor(threading.Thread):
 								break
 						if not match:
 							conf.print('info', 'Builder dropped task, unassigning')
-							b.unassign(task)
+							b.unassign(Task(task['jobid'], task['arch'], task['os'], task['release']))
 							queue.enqueue(task)
 				else:
 					b.online(False)
@@ -203,12 +203,13 @@ class queue_monitor(threading.Thread):
 	def run(self):
 		while True:
 			data = []
-			task,score = self.q.dequeue_with_priority()
 
+			task,score = self.q.dequeue_with_priority()
 			while True: #For each task in the queue, try to find a builder
+				conf.print('debug', task)
 				builder = pick_builder(task['arch'], task['os'], task['release'])
 				if builder:
-					assign_build(builder['address'], builder['fingerprint'], task['jobid'], task['arch'], task['os'], task['release'], task['source'])
+					assign_build(builder['address'], builder['fingerprint'], task['jobid'], task['arch'], task['os'], task['release'])
 				else:
 					data.append((task, score))
 				try:
@@ -217,6 +218,7 @@ class queue_monitor(threading.Thread):
 					break
 
 			for x in data: #Put the unassigned tasks back in the queue
+				print(x)
 				self.q.enqueue_with_priority(x[0], x[1])
 			time.sleep(20)
 

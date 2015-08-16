@@ -73,7 +73,6 @@ CREATE TABLE IF NOT EXISTS tasks (
 	build_release VARCHAR(16) NOT NULL,
 	build_arch VARCHAR(8) NOT NULL,
 	taskstatus ENUM('unassigned', 'assigned', 'built', 'failed', 'cancelled') DEFAULT 'unassigned' NOT NULL,
-	sourcedir VARCHAR(255) NOT NULL,
 	resultdir VARCHAR(255),
 	PRIMARY KEY(jobid, build_os, build_release, build_arch),
 	FOREIGN KEY(jobid) REFERENCES jobs(jobid)
@@ -231,7 +230,7 @@ def add_tasks_to_job(tasks, jobid):
 	con = _connect()
 	cur = con.cursor()
 	for target in tasks:
-		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os, sourcedir) VALUES('%s', '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os'], target['source']))
+		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os) VALUES('%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os']))
 	con.commit()
 
 
@@ -258,8 +257,8 @@ def task_failed(jobid, arch, os, release):
 def get_unassigned_tasks():
 	con = _connect()
 	cur = con.cursor()
-	cur.execute("SELECT jobid, build_arch, build_os, build_release, sourcedir FROM tasks WHERE taskstatus='unassigned'")
-	return dict_from_tup_list(('jobid', 'arch', 'os', 'release', 'source'), cur.fetchall())
+	cur.execute("SELECT jobid, build_arch, build_os, build_release FROM tasks WHERE taskstatus='unassigned'")
+	return dict_from_tup_list(('jobid', 'arch', 'os', 'release'), cur.fetchall())
 
 
 
@@ -332,11 +331,11 @@ def get_tasks_assigned_to_builder(builder_address, builder_fingerprint):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT jobid, build_arch, build_os, build_release, sourcedir
+SELECT jobid, build_arch, build_os, build_release
 FROM tasks NATURAL JOIN assignments
 WHERE builder_address='%s' AND builder_fingerprint='%s'
 """ % (builder_address, builder_fingerprint))
-	return dict_from_tup_list(('jobid', 'arch', 'os', 'release', 'source'), cur.fetchall())
+	return dict_from_tup_list(('jobid', 'arch', 'os', 'release'), cur.fetchall())
 
 
 
