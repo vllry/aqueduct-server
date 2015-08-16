@@ -4,7 +4,6 @@ from random import randrange
 import tarfile
 import time
 
-import aqueductbuilderinterface as builder_interface
 import aqueductdatabase as db
 
 

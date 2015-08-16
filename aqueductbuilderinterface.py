@@ -80,7 +80,10 @@ class Builder:
 		queue.enqueue(task.dict())
 
 	def unassign_all(self):
+		tasks = self.tasks()
 		db.unassign_tasks_from_builder(self.address, self.fingerprint)
+		for task in tasks:
+			queue.enqueue(task)
 
 
 
@@ -168,22 +171,15 @@ class builder_monitor(threading.Thread):
 					for task in b.tasks():
 						if info['building']:
 							info['queue'].append(info['building'])
-						#if not any(
-						#	task['jobid'] == t['jobid'] and
-						#	task['arch'] == t['arch'] and
-						#	task['os'] == t['os'] and
-						#	task['release'] == t['release']
-						#	for t in info['queue']
-						#):
-						match = False
-						for t in info['queue']:
-							if str(task['jobid']) == t['jobid'] and task['arch'] == t['arch'] and task['os'] == t['os'] and task['release'] == t['release']:
-								match = True
-								break
-						if not match:
+						if not any(
+							str(task['jobid']) == t['jobid'] and
+							task['arch'] == t['arch'] and
+							task['os'] == t['os'] and
+							task['release'] == t['release']
+							for t in info['queue']
+						):
 							conf.print('info', 'Builder dropped task, unassigning')
 							b.unassign(Task(task['jobid'], task['arch'], task['os'], task['release']))
-							queue.enqueue(task)
 				else:
 					b.online(False)
 					b.unassign_all()
