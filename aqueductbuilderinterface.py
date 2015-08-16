@@ -75,6 +75,19 @@ class Builder:
 	def tasks(self):
 		return db.get_tasks_assigned_to_builder(self.address, self.fingerprint)
 
+	def assign(self, task):
+		db.assign_task(self.address, self.fingerprint, task.jobid, task.arch, task.os, task.release)
+		conf.print('info', "Task submitted to " + self.address)
+		lib.targz('%s%s/%s/%s' % (conf.general['dir']['processing'], str(task.jobid), task.os, task.release), 'temp.tar.gz')
+		data = {
+			'callbackurl' : 'http://localhost:6500/callback',
+			'jobid' : task.jobid,
+			'arch' : task.arch,
+			'os' : task.os,
+			'release' : task.release
+		}
+		lib.upload('temp.tar.gz', self.address+'/build/submit', data)
+
 	def unassign(self, task):
 		db.unassign_task_from_builder(self.address, self.fingerprint, task.jobid, task.arch, task.os, task.release)
 		queue.enqueue(task.dict())
@@ -94,10 +107,6 @@ class Task:
 		self.os = os
 		self.release = release
 
-	def assign_to(builder):
-		self.builder = builder
-		db.assign_task(builder.address, builder.fingerprint, self.jobid, self.arch, self.os, self.release)
-
 	def dict(self):
 		return {
 			'jobid': self.jobid,
@@ -105,21 +114,6 @@ class Task:
 			'os': self.os,
 			'release': self.release
 		}
-
-
-
-def assign_build(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release):
-	db.assign_task(builder_address, builder_fingerprint, jobid, build_arch, build_os, build_release)
-	conf.print('info', "Task submitted to " + builder_address)
-	lib.targz('%s%s/%s/%s' % (conf.general['dir']['processing'], str(jobid), build_os, build_release), 'temp.tar.gz')
-	data = {
-		'callbackurl' : 'http://localhost:6500/callback',
-		'jobid' : jobid,
-		'arch' : build_arch,
-		'os' : build_os,
-		'release' : build_release,
-	}
-	lib.upload('temp.tar.gz', builder_address+'/build/submit', data)
 
 
 
@@ -205,7 +199,8 @@ class queue_monitor(threading.Thread):
 				conf.print('debug', task)
 				builder = pick_builder(task['arch'], task['os'], task['release'])
 				if builder:
-					assign_build(builder['address'], builder['fingerprint'], task['jobid'], task['arch'], task['os'], task['release'])
+					b = Builder(builder['address'], builder['fingerprint'])
+					b.assign(Task(task['jobid'], task['arch'], task['os'], task['release']))
 				else:
 					data.append((task, score))
 				try:

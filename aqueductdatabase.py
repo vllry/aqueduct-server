@@ -293,7 +293,7 @@ def unassign_task_from_builder(builder_address, builder_fingerprint, jobid, arch
 	cur = con.cursor()
 	cur.execute("""
 UPDATE tasks SET taskstatus='unassigned'
-WHERE EXISTS 
+WHERE jobid = '%s' AND build_arch = '%s' AND build_os = '%s' AND build_release = '%s' AND EXISTS 
 	(SELECT 1
 		FROM assignments AS a
 		WHERE a.builder_address = '%s' AND a.builder_fingerprint = '%s'
