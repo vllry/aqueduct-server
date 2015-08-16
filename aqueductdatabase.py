@@ -164,7 +164,10 @@ SELECT releasename
 FROM builder_releases
 WHERE builder_address='%s' AND builder_fingerprint='%s'
 """ % (builder_address, builder_fingerprint))
-	return cur.fetchall()
+	l = []
+	for release in cur.fetchall(): #Returns a tuple of 1-element tuples
+		l.append(release[0])
+	return l
 
 
 
@@ -213,16 +216,23 @@ WHERE address='%s' AND fingerprint='%s'
 
 
 
-def add_tasks(tasks):
+def add_job():
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("INSERT INTO jobs(jobstatus) VALUES('processing')")
 	cur.execute("SELECT LAST_INSERT_ID()") #TODO: investigate safer alternative
+	con.commit()
 	jobid = cur.fetchone()[0]
+	return jobid
+
+
+
+def add_tasks_to_job(tasks, jobid):
+	con = _connect()
+	cur = con.cursor()
 	for target in tasks:
 		cur.execute("INSERT INTO tasks(jobid, build_arch, build_release, build_os, sourcedir) VALUES('%s', '%s', '%s', '%s', '%s')" % (jobid, target['arch'], target['release'], target['os'], target['source']))
 	con.commit()
-	return jobid
 
 
 
@@ -298,7 +308,7 @@ WHERE builder_address = '%s' AND builder_fingerprint = '%s' AND jobid = '%s' AND
 
 
 
-def delete_old_assignments(address, fingerprint):
+def delete_old_assignments():
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
@@ -307,13 +317,13 @@ SET taskstatus='unassigned'
 WHERE EXISTS 
 	(SELECT 1
 		FROM assignments AS a
-		WHERE a.builder_address = '%s' AND a.builder_fingerprint = '%s' AND a.unassign_after < UNIX_TIMESTAMP()
+		WHERE a.unassign_after < UNIX_TIMESTAMP()
 	);
-""" % (address, fingerprint))
+""")
 	cur.execute("""
 DELETE FROM assignments
-WHERE builder_address = '%s' AND builder_fingerprint = '%s' AND unassign_after < UNIX_TIMESTAMP()
-""" % (address, fingerprint))
+WHERE unassign_after < UNIX_TIMESTAMP()
+""")
 	con.commit()
 
 
@@ -403,11 +413,11 @@ def get_all_builders():
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT address, fingerprint, label, arch, os
+SELECT address, fingerprint
 	FROM
 	builders
 """)
-	return dict_from_tup_list(('address', 'fingerprint', 'label', 'arch', 'os'), cur.fetchall())
+	return cur.fetchall()
 
 
 

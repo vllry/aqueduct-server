@@ -2,10 +2,10 @@
 
 from bottle import route, run, request#, static_file, abort
 import json
-from os import getuid
+from os import getuid, mkdir
 from threading import Thread
 
-from aqueductdatabase import mark_all_builders_offline
+from aqueductdatabase import add_job, mark_all_builders_offline
 import libaqueductserver as aqueduct
 
 
@@ -51,11 +51,12 @@ def build_submit():
 	if not upload or not upload.file:
 		return {'success': False, 'message': 'No file supplied'}
 
-	path_to_source = conf.general['dir']['intake'] + upload.filename
-	upload.save(conf.general['dir']['intake'])
+	jobid = add_job()
+	mkdir(conf.general['dir']['intake']+str(jobid))
+	upload.save(conf.general['dir']['intake'] + str(jobid))
+	conf.print('info', 'New package submitted, given jobid %s' % (jobid))
 
-	conf.print('info', 'New package submitted')
-	t = Thread(target=aqueduct.intake, args=(conf,path_to_source,))
+	t = Thread(target=aqueduct.intake, args=(conf,jobid,conf.general['dir']['intake'] + str(jobid) + '/' + upload.filename))
 	t.start()
 
 	return {
