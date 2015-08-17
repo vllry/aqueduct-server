@@ -299,7 +299,7 @@ WHERE jobid = '%s' AND build_arch = '%s' AND build_os = '%s' AND build_release =
 		WHERE a.builder_address = '%s' AND a.builder_fingerprint = '%s'
 			AND a.jobid = '%s' AND a.build_arch = '%s' AND a.build_os = '%s' AND a.build_release = '%s'
 	);
-""" % (builder_address, builder_fingerprint, jobid, arch, os, release))
+""" % (jobid, arch, os, release, builder_address, builder_fingerprint, jobid, arch, os, release))
 
 	cur.execute("""
 DELETE FROM assignments
