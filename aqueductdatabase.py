@@ -37,6 +37,12 @@ def _connect():
 def _ensure_tables_exist():
 	tables = [
 """
+CREATE TABLE IF NOT EXISTS aqueduct (
+	db_version INT NOT NULL DEFAULT 0,
+	PRIMARY KEY(db_version)
+);
+""",
+"""
 CREATE TABLE IF NOT EXISTS builders (
 	address VARCHAR(255) NOT NULL,
 	fingerprint VARCHAR(64) NOT NULL,
@@ -55,6 +61,7 @@ CREATE TABLE IF NOT EXISTS builder_releases (
 	builder_address VARCHAR(255) NOT NULL,
 	builder_fingerprint VARCHAR(64) NOT NULL,
 	releasename VARCHAR(16) NOT NULL,
+	releasearch VARCHAR(8) NOT NULL,
 	PRIMARY KEY(builder_address, builder_fingerprint, releasename),
 	FOREIGN KEY builder_id_fkeys (builder_address, builder_fingerprint) REFERENCES builders(address, fingerprint)
 ) ENGINE=InnoDB;
@@ -135,22 +142,22 @@ WHERE address='%s' AND fingerprint='%s'
 
 
 
-def add_builder_release(builder_address, builder_fingerprint, release):
+def add_builder_release(builder_address, builder_fingerprint, release, arch):
 	con = _connect()
 	cur = con.cursor()
-	cur.execute("INSERT INTO builder_releases(builder_address, builder_fingerprint, releasename) VALUES('%s', '%s', '%s')" % (builder_address, builder_fingerprint, release))
+	cur.execute("INSERT INTO builder_releases(builder_address, builder_fingerprint, releasename, releasearch) VALUES('%s', '%s', '%s', '%s')" % (builder_address, builder_fingerprint, release, arch))
 	con.commit()
 
 
 
-def remove_builder_release(builder_address, builder_fingerprint, release):
+def remove_builder_release(builder_address, builder_fingerprint, release, arch):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
 DELETE
 FROM builder_releases
-WHERE builder_address='%s' AND builder_fingerprint='%s' AND releasename='%s'
-""" % (builder_address, builder_fingerprint, release))
+WHERE builder_address='%s' AND builder_fingerprint='%s' AND releasename='%s' AND releasearch='%s'
+""" % (builder_address, builder_fingerprint, release, arch))
 	con.commit()
 
 
@@ -159,28 +166,14 @@ def get_builder_releases(builder_address, builder_fingerprint):
 	con = _connect()
 	cur = con.cursor()
 	cur.execute("""
-SELECT releasename
+SELECT releasename, releasearch
 FROM builder_releases
 WHERE builder_address='%s' AND builder_fingerprint='%s'
 """ % (builder_address, builder_fingerprint))
 	l = []
 	for release in cur.fetchall(): #Returns a tuple of 1-element tuples
-		l.append(release[0])
+		l.append(release[0], release[1])
 	return l
-
-
-
-def update_builder(address, fingerprint, label, arch, os, releases):
-	con = _connect()
-	cur = con.cursor()
-	cur.execute("""
-UPDATE builders
-SET arch='%s', os='%s', label='%s'
-WHERE address='%s' AND fingerprint='%s'
-""" % (arch, os, label, address, fingerprint))
-	con.commit()
-	for release in releases:
-		add_builder_release(address, fingerprint, release)
 
 
 
@@ -356,13 +349,13 @@ def get_free_builder_supporting_release(arch, os, release):
 SELECT address, fingerprint
 	FROM
 	builders AS b JOIN builder_releases ON b.address = builder_releases.builder_address AND b.fingerprint = builder_releases.builder_fingerprint
-WHERE %s os='%s' AND releasename='%s' AND online=1 AND
+WHERE %s os='%s' AND releasename='%s' AND releasearch='%s' AND online=1 AND
 NOT EXISTS 
 	(SELECT 1
 		FROM assignments AS a
 		WHERE a.builder_address = b.address AND a.builder_fingerprint = b.fingerprint
 	);
-""" % (arch_condition_string(arch), os, release))
+""" % (arch_condition_string(arch), os, release, arch))
 	return dict_from_tup(('address', 'fingerprint'), cur.fetchone())
 
 

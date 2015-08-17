@@ -101,10 +101,10 @@ class Builder:
 		if current is not None:
 			for r in self._releases:
 				if r not in current:
-					db.remove_builder_release(self.address, self.fingerprint, r)
+					db.remove_builder_release(self.address, self.fingerprint, r[0], r[1])
 			for r in current:
 				if r not in self._releases:
-					db.add_builder_release(self.address, self.fingerprint, r)
+					db.add_builder_release(self.address, self.fingerprint, r[0], r[1])
 			self._releases = current
 		return self._releases
 
