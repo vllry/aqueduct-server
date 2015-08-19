@@ -172,7 +172,7 @@ WHERE builder_address='%s' AND builder_fingerprint='%s'
 """ % (builder_address, builder_fingerprint))
 	l = []
 	for release in cur.fetchall(): #Returns a tuple of 1-element tuples
-		l.append(release[0], release[1])
+		l.append((release[0], release[1]))
 	return l
 
 
