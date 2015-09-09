@@ -4,15 +4,24 @@ from bottle import route, run, request#, static_file, abort
 import json
 from os import getuid, mkdir, path
 import shutil
+from sys import argv
 from threading import Thread
 
 from aqueductbuilderinterface import queue_tasks
 import aqueductdatabase as db
+from libaqueduct import GPG
 import libaqueductserver as aqueduct
 
 
 
 conf = aqueduct.Config()
+gpg = GPG('Aqueduct Server', conf.general['dir']['gpg'], True)
+if len(argv) > 1:
+	if len(argv) == 3 and argv[1] == '--import-user-key':
+		keyid = gpg.import_key_file(argv[2])
+		db.add_user_key(keyid)
+	else:
+		print('Invalid parameters')
 
 
 
@@ -23,6 +32,12 @@ def get_info():
 		'version': conf.general['version']
 		}
 	return json.dumps(info)
+
+
+
+@route('/pubkey', method='GET')
+def get_info():
+	return gpg.export()
 
 
 
@@ -48,23 +63,36 @@ def handle_callback():
 
 @route('/submit', method='POST')
 def build_submit():
+	signature = request.forms.get('signature')
 	upload = request.files.data
 
 	if not upload or not upload.file:
 		return {'success': False, 'message': 'No file supplied'}
+	if not signature:
+		return {'success': False, 'message': 'No signature supplied'}
 
 	jobid = db.add_job()
-	mkdir(conf.general['dir']['intake']+str(jobid))
-	upload.save(conf.general['dir']['intake'] + str(jobid))
+	working_dir = conf.general['dir']['intake']+str(jobid)+'/'
+	mkdir(working_dir)
+	upload.save(working_dir)
+	f = open(working_dir + 'upload.asc', 'w')
+	f.write(signature)
+	f.close()
 	conf.print('info', 'New package submitted, given jobid %s' % (jobid))
 
-	t = Thread(target=intake, args=(conf,jobid,conf.general['dir']['intake'] + str(jobid) + '/' + upload.filename))
-	t.start()
-
-	return {
-		'success': True,
-		'message': 'Source submitted'
-	}
+	if gpg.decrypt_and_verify_file(working_dir+upload.filename, working_dir+'upload.asc', working_dir+'upload.tar.gz'):
+		t = Thread(target=intake, args=(conf,jobid,working_dir+'upload.tar.gz'))
+		t.start()
+		return {
+			'success': True,
+			'message': 'Source submitted'
+		}
+	else:
+		conf.print('warn', "Upload for jobid %s rejected due to signature" % (jobid))
+		return {
+			'success': False,
+			'message': 'Signature is invalid, or not from a permitted uploader.'
+		}
 
 
 #Bottle routes above here

@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS aqueduct (
 );
 """,
 """
+CREATE TABLE IF NOT EXISTS user_keys (
+	keyid VARCHAR(16) NOT NULL,
+	PRIMARY KEY(keyid)
+);
+""",
+"""
 CREATE TABLE IF NOT EXISTS builders (
 	address VARCHAR(255) NOT NULL,
 	fingerprint VARCHAR(64) NOT NULL,
@@ -106,6 +112,14 @@ CREATE TABLE IF NOT EXISTS assignments (
 	for table in tables:
 		#print('Running ' + table[:50] + '...')
 		cur.execute(table)
+	con.commit()
+
+
+
+def add_user_key(keyid):
+	con = _connect()
+	cur = con.cursor()
+	cur.execute("INSERT INTO user_keys(keyid) VALUES('%s')" % (keyid))
 	con.commit()
 
 
