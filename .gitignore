@@ -1,0 +1,6 @@
+*/__pycache/
+*.pyc
+*~
+temp.tar.gz
+vallery.key
+aqueduct-in
