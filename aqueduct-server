@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from bottle import route, run, request#, static_file, abort
+from bottle import route, run, request
 import json
 from os import getuid, mkdir, path
 import shutil

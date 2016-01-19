@@ -26,7 +26,7 @@ def dict_from_tup_list(keys, values_list):
 
 
 def _connect():
-	f = open('/home/vallery/Development/Aqueduct/aqueduct-server/etc/aqueduct-server/database.conf')
+	f = open('/home/vallery/Development/Projects/Aqueduct/aqueduct-server/etc/aqueduct-server/database.conf')
 	conf = load(f)
 	f.close()
 	return mysql.connect(conf['host'], conf['user'], conf['password'], conf['database'])
